@@ -11,9 +11,23 @@ import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/min
 import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/mind_hub_videos_popup.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/mindhub_videos_popup.dart';
 
+import '../../models/articles_model.dart';
+import '../../models/videos_models.dart';
+
 class ContentsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    List<Article> articles = [
+      Article(title: "Article 1", body: "Body 1", sources: "Source 1", thumbnail: "thumbnail1.png"),
+      Article(title: "Article 2", body: "Body 2", sources: "Source 2", thumbnail: "thumbnail2.png"),
+    ];
+
+    List<Video> videos = [
+      Video(title: "Video 1", description: "Educational Video 1", thumbnail: "video_thumbnail1.png", videoFile: "video1.mp4"),
+      Video(title: "Video 2", description: "Educational Video 2", thumbnail: "video_thumbnail2.png", videoFile: "video2.mp4"),
+    ];
+
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Contents Section'),
@@ -32,8 +46,8 @@ class ContentsScreen extends StatelessWidget {
 
             _buildSectionTitle('MindHub'),
             _buildOptionsRow(context, [
-              {'title': 'MindHub Articles', 'dialog': () => showMindHubArticlesDialog(context)},
-              {'title': 'MindHub Videos', 'dialog': () => showMindHubVideosDialog(context)},
+              {'title': 'MindHub Articles', 'dialog': () => showMindHubArticlesDialog(context, articles)},
+              {'title': 'MindHub Videos', 'dialog': () => showMindHubVideosDialog(context, videos)},
               {'title': 'MindHub Ebooks', 'dialog': () => showMindHubEbooksDialog(context)},
             ]),
 
