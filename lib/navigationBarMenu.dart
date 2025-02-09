@@ -1,152 +1,136 @@
 import 'package:flutter/material.dart';
-import 'package:auto_route/auto_route.dart';
-import '../routes/router.dart'; // Import the generated routes
+import 'package:go_router/go_router.dart';
 
-@RoutePage()
 class NavigationBarMenuScreen extends StatelessWidget {
-  const NavigationBarMenuScreen({super.key});
+  final Widget child; // Accepts child for ShellRoute navigation
+  const NavigationBarMenuScreen({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        bool isWideScreen = constraints.maxWidth > 800; // Show sidebar if width > 800px
+    return WillPopScope(
+      onWillPop: () async {
+        final router = GoRouter.of(context);
 
-        return AutoTabsRouter(
-          routes: const [
-            HomeRoute(),
-            ContentsRoute(),
-            SessionsRoute(),
-            TicketsRoute(),
-            UserManagementRoute(),
-            CommunityRoute(),
-            SupportRoute(),
-            LogoutRoute(),
-          ],
-          builder: (context, child) {
-            final tabsRouter = AutoTabsRouter.of(context);
+        // Define tab routes correctly
+        const routes = [
+          '/navigation/home',
+          '/navigation/contents',
+          '/navigation/sessions',
+          '/navigation/tickets',
+          '/navigation/user-management',
+          '/navigation/community',
+          '/navigation/support',
+          '/navigation/logout',
+        ];
 
-            return WillPopScope(
-              onWillPop: () async {
-                // If not on the first tab, go back to the previous tab instead of exiting the app
-                if (tabsRouter.activeIndex > 0) {
-                  tabsRouter.setActiveIndex(tabsRouter.activeIndex - 1);
-                  return false; // Prevent default back button behavior
-                }
-                return true; // Exit app if on first tab
-              },
-              child: Scaffold(
-                appBar: AppBar(
-                  title: const Text('Admin Panel'),
-                  backgroundColor: Colors.blue,
-                  automaticallyImplyLeading: !isWideScreen, // Hide back button if widescreen
-                  elevation: 0,
-                ),
-                body: Row(
+        int currentIndex = routes.indexOf(GoRouter.of(context).routeInformationProvider.value.uri.toString());
+
+        if (currentIndex > 0) {
+          // Move back to the previous tab instead of closing the app
+          router.go(routes[currentIndex - 1]);
+          return false; // Prevent default back behavior (app exit)
+        }
+
+        return true; // Allow the app to exit only when at the first tab
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Admin Panel'),
+          backgroundColor: Colors.blue,
+          elevation: 0,
+        ),
+        body: Row(
+          children: [
+            // Sidebar for wide screens
+            Expanded(
+              flex: 3,
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sidebar (Flex 3) for Wide Screens
-
-                      Expanded(
-                        flex: 3,
-                        child: Container(
-                          color: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Sidebar Title
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 20),
-                                child: Text(
-                                  'Navigation',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-
-                              // Sidebar Items
-                              Expanded(
-                                child: ListView.builder(
-                                  itemCount: 8,
-                                  itemBuilder: (context, index) {
-                                    final titles = [
-                                      'Home',
-                                      'Contents',
-                                      'Sessions',
-                                      'Tickets',
-                                      'User Management',
-                                      'Community',
-                                      'Support',
-                                      'Logout'
-                                    ];
-                                    return GestureDetector(
-                                      onTap: () {
-                                        tabsRouter.setActiveIndex(index);
-                                      },
-                                      child: Container(
-                                        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                                        decoration: BoxDecoration(
-                                          color: tabsRouter.activeIndex == index
-                                              ? Colors.blue[50]
-                                              : Colors.white,
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: tabsRouter.activeIndex == index
-                                              ? Border.all(color: Colors.blue, width: 2)
-                                              : null,
-                                        ),
-                                        child: Text(
-                                          titles[index],
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            color: tabsRouter.activeIndex == index ? Colors.blue : Colors.grey,
-                                            fontWeight: tabsRouter.activeIndex == index
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Navigation',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
                       ),
+                    ),
+                    const SizedBox(height: 10),
 
-                    // Main Content (Flex 7) - AutoRouter to display active tab content
                     Expanded(
-                      flex: 7,
-                      child: child, // Use AutoTabsRouter's child widget
+                      child: ListView(
+                        children: [
+                          _buildSidebarItem(context, 'Home', '/navigation/home'),
+                          _buildSidebarItem(context, 'Contents', '/navigation/contents'),
+                          _buildSidebarItem(context, 'Sessions', '/navigation/sessions'),
+                          _buildSidebarItem(context, 'Tickets', '/navigation/tickets'),
+                          _buildSidebarItem(context, 'User Management', '/navigation/user-management'),
+                          _buildSidebarItem(context, 'Community', '/navigation/community'),
+                          _buildSidebarItem(context, 'Support', '/navigation/support'),
+                          _buildSidebarItem(context, 'Logout', '/navigation/logout'),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                bottomNavigationBar: isWideScreen
-                    ? null
-                    : BottomNavigationBar(
-                  currentIndex: tabsRouter.activeIndex,
-                  onTap: tabsRouter.setActiveIndex,
-                  items: const [
-                    BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-                    BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Contents'),
-                    BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Sessions'),
-                    BottomNavigationBarItem(icon: Icon(Icons.airplane_ticket), label: 'Tickets'),
-                    BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
-                    BottomNavigationBarItem(icon: Icon(Icons.groups), label: 'Community'),
-                    BottomNavigationBarItem(icon: Icon(Icons.support), label: 'Support'),
-                    BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Logout'),
-                  ],
-                ),
               ),
-            );
-          },
-        );
-      },
+            ),
+
+            // Main Content - Shows the active tab
+            Expanded(flex: 7, child: child),
+          ],
+        ),
+
+        // Bottom Navigation for mobile
+
+      ),
     );
+  }
+
+  /// Sidebar Item Builder
+  Widget _buildSidebarItem(BuildContext context, String title, String route) {
+    final currentRoute = GoRouter.of(context).routeInformationProvider.value.uri.toString();
+    final bool isSelected = currentRoute == route;
+
+    return GestureDetector(
+      onTap: () => context.go(route),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue[50] : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: isSelected ? Border.all(color: Colors.blue, width: 2) : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            color: isSelected ? Colors.blue : Colors.grey,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Get the current index of the selected tab
+  int _getCurrentIndex(BuildContext context) {
+    final currentRoute = GoRouter.of(context).routeInformationProvider.value.uri.toString();
+    const routes = [
+      '/navigation/home',
+      '/navigation/contents',
+      '/navigation/sessions',
+      '/navigation/tickets',
+      '/navigation/user-management',
+      '/navigation/community',
+      '/navigation/support',
+      '/navigation/logout',
+    ];
+
+    int index = routes.indexOf(currentRoute);
+    return index != -1 ? index : 0; // Ensure it never returns -1
   }
 }

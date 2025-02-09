@@ -1,11 +1,6 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:auto_route/annotations.dart';
-import 'package:lightlevelpsychosolutionsadmin/screens/homeScreen.dart';
+import 'package:go_router/go_router.dart';
 
-import '../routes/router.dart';
-
-@RoutePage() // Make sure this annotation is here
 class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -73,30 +68,20 @@ class LoginScreen extends StatelessWidget {
               // Login Button
               GestureDetector(
                 onTap: () {
-
-                  context.pushRoute(
-                    NavigationBarMenuRoute(children: [HomeRoute()]),
-                  );
-                  // Push to keep history, but manually update the URL afterward
-
-
+                  // Navigate to home screen
+                  GoRouter.of(context).go('/navigation/home');
                 },
                 child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(vertical: 15),
+                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
                   decoration: BoxDecoration(
-                    color: Colors.blue,
+                    color: Colors.blue[50],
                     borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue, width: 2),
                   ),
-                  child: Center(
-                    child: Text(
-                      'Login',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  child: const Text(
+                    'Login',
+                    style: TextStyle(fontSize: 16, color: Colors.blue, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

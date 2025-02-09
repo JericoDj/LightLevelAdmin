@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
 
-import 'package:auto_route/annotations.dart';
-
-@RoutePage()
-class HomeScreen extends StatelessWidget {
+class TicketsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Tickets'),
+        backgroundColor: Colors.blue,
+      ),
       body: Center(
         child: Text(
-          'Home Screen',
+          'Tickets Screen',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
         ),
       ),

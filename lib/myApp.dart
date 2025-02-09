@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:auto_route/auto_route.dart';
 import 'package:lightlevelpsychosolutionsadmin/routes/router.dart';
 
 class MyApp extends StatelessWidget {
@@ -11,7 +10,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
-      routerConfig: AppRouter().config(), // Use AutoRoute's config() method
+      routerConfig: router,
       debugShowCheckedModeBanner: false,
     );
   }

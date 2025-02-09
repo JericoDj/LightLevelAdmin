@@ -1,40 +1,40 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../screens/communityScreen/community_screen.dart';
+import '../screens/contentsScreen/contents_screen.dart';
+import '../screens/homescreen/homeScreen.dart';
+import '../screens/loginScreen/loginScreen.dart';
+import '../screens/logoutScreen/logout_button.dart';
+import '../screens/sessionsScreen/sessions_screen.dart';
+import '../screens/supportScreen/support_screen.dart';
+import '../screens/ticketsScreen/tickets_screen.dart';
+import '../screens/userManagementScreen/user_management_screen.dart';
 import '../navigationBarMenu.dart';
-import '../screens/community_screen.dart';
-import '../screens/contents_screen.dart';
-import '../screens/homeScreen.dart';
-import '../screens/loginScreen.dart';
-import '../screens/logout_button.dart';
-import '../screens/sessions_screen.dart';
-import '../screens/support_screen.dart';
-import '../screens/tickets_screen.dart';
-import '../screens/user_management_screen.dart';
 
-part 'router.gr.dart'; // Ensure this matches your generated file name!
+final GoRouter router = GoRouter(
+  initialLocation: '/login', // Ensure login is the first screen
+  routes: [
+    // Login Route
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => LoginScreen(),
+    ),
 
-@AutoRouterConfig()
-class AppRouter extends RootStackRouter {
-  AppRouter({super.navigatorKey});
-
-  @override
-  List<AutoRoute> get routes => [
-    AutoRoute(page: LoginRoute.page, path: '/login', initial: true),
-
-    // Parent route for the navigation menu with nested tabs
-    AutoRoute(
-      page: NavigationBarMenuRoute.page,
-      path: '/navigation',
-      children: [
-        AutoRoute(page: HomeRoute.page, path: 'home', initial: true),
-        AutoRoute(page: ContentsRoute.page, path: 'contents'),
-        AutoRoute(page: SessionsRoute.page, path: 'sessions'),
-        AutoRoute(page: TicketsRoute.page, path: 'tickets'),
-        AutoRoute(page: UserManagementRoute.page, path: 'user-management'),
-        AutoRoute(page: CommunityRoute.page, path: 'community'),
-        AutoRoute(page: SupportRoute.page, path: 'support'),
-        AutoRoute(page: LogoutRoute.page, path: 'logout'),
+    // Parent Route: Navigation Bar with Nested Tabs
+    ShellRoute(
+      builder: (context, state, child) {
+        return NavigationBarMenuScreen(child: child); // Pass the child for navigation
+      },
+      routes: [
+        GoRoute(path: '/navigation/home', builder: (context, state) =>HomeScreen()),
+        GoRoute(path: '/navigation/contents', builder: (context, state) =>  ContentsScreen()),
+        GoRoute(path: '/navigation/sessions', builder: (context, state) => SessionsScreen()),
+        GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
+        GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
+        GoRoute(path: '/navigation/community', builder: (context, state) => CommunityScreen()),
+        GoRoute(path: '/navigation/support', builder: (context, state) => SupportScreen()),
+        GoRoute(path: '/navigation/logout', builder: (context, state) =>  LogoutScreen()),
       ],
     ),
-  ];
-}
+  ],
+);

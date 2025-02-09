@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:auto_route/annotations.dart';
 
-@RoutePage()
+
 class LogoutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
