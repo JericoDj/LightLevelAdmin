@@ -8,10 +8,12 @@ import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/ins
 import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/insightquest_positivity_quiz_dialog.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/insightquest_resilience_quiz_dialog.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/mind_hub_articles_popup.dart';
+import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/mind_hub_ebooks_popup.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/mind_hub_videos_popup.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/mindhub_videos_popup.dart';
 
 import '../../models/articles_model.dart';
+import '../../models/ebooks_model.dart';
 import '../../models/videos_models.dart';
 
 class ContentsScreen extends StatelessWidget {
@@ -26,6 +28,25 @@ class ContentsScreen extends StatelessWidget {
       Video(title: "Video 1", description: "Educational Video 1", thumbnail: "video_thumbnail1.png", videoFile: "video1.mp4"),
       Video(title: "Video 2", description: "Educational Video 2", thumbnail: "video_thumbnail2.png", videoFile: "video2.mp4"),
     ];
+
+    List<Ebook> ebooks = [
+      Ebook(
+        id: "1",
+        title: "Mindfulness for Beginners",
+        description: "An introductory guide to mindfulness and meditation.",
+        cover: "ebook_cover1.png",
+        ebookFile: "mindfulness_for_beginners.pdf",
+      ),
+      Ebook(
+        id: "2",
+        title: "The Science of Positivity",
+        description: "A deep dive into how positive thinking affects mental health.",
+        cover: "ebook_cover2.png",
+        ebookFile: "science_of_positivity.pdf",
+      ),
+    ];
+
+
 
 
     return Scaffold(
@@ -48,7 +69,7 @@ class ContentsScreen extends StatelessWidget {
             _buildOptionsRow(context, [
               {'title': 'MindHub Articles', 'dialog': () => showMindHubArticlesDialog(context, articles)},
               {'title': 'MindHub Videos', 'dialog': () => showMindHubVideosDialog(context, videos)},
-              {'title': 'MindHub Ebooks', 'dialog': () => showMindHubEbooksDialog(context)},
+              {'title': 'MindHub Ebooks', 'dialog': () => showMindHubEbooksDialog(context, ebooks)},
             ]),
 
             _buildSectionTitle('InsightQuest'),

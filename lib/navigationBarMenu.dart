@@ -23,7 +23,12 @@ class NavigationBarMenuScreen extends StatelessWidget {
           '/navigation/logout',
         ];
 
-        int currentIndex = routes.indexOf(GoRouter.of(context).routeInformationProvider.value.uri.toString());
+        int currentIndex = routes.indexOf(GoRouter
+            .of(context)
+            .routeInformationProvider
+            .value
+            .uri
+            .toString());
 
         if (currentIndex > 0) {
           // Move back to the previous tab instead of closing the app
@@ -54,7 +59,9 @@ class NavigationBarMenuScreen extends StatelessWidget {
                       padding: EdgeInsets.symmetric(horizontal: 20),
                       child: Text(
                         'Navigation',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                        style: TextStyle(fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -62,14 +69,22 @@ class NavigationBarMenuScreen extends StatelessWidget {
                     Expanded(
                       child: ListView(
                         children: [
-                          _buildSidebarItem(context, 'Home', '/navigation/home'),
-                          _buildSidebarItem(context, 'Contents', '/navigation/contents'),
-                          _buildSidebarItem(context, 'Sessions', '/navigation/sessions'),
-                          _buildSidebarItem(context, 'Tickets', '/navigation/tickets'),
-                          _buildSidebarItem(context, 'User Management', '/navigation/user-management'),
-                          _buildSidebarItem(context, 'Community', '/navigation/community'),
-                          _buildSidebarItem(context, 'Support', '/navigation/support'),
-                          _buildSidebarItem(context, 'Logout', '/navigation/logout'),
+                          _buildSidebarItem(
+                              context, 'Home', '/navigation/home'),
+                          _buildSidebarItem(
+                              context, 'Contents', '/navigation/contents'),
+                          _buildSidebarItem(
+                              context, 'Sessions', '/navigation/sessions'),
+                          _buildSidebarItem(
+                              context, 'Tickets', '/navigation/tickets'),
+                          _buildSidebarItem(context, 'User Management',
+                              '/navigation/user-management'),
+                          _buildSidebarItem(
+                              context, 'Community', '/navigation/community'),
+                          _buildSidebarItem(
+                              context, 'Support', '/navigation/support'),
+                          _buildSidebarItem(
+                              context, 'Logout', '/navigation/logout'),
                         ],
                       ),
                     ),
@@ -91,7 +106,12 @@ class NavigationBarMenuScreen extends StatelessWidget {
 
   /// Sidebar Item Builder
   Widget _buildSidebarItem(BuildContext context, String title, String route) {
-    final currentRoute = GoRouter.of(context).routeInformationProvider.value.uri.toString();
+    final currentRoute = GoRouter
+        .of(context)
+        .routeInformationProvider
+        .value
+        .uri
+        .toString();
     final bool isSelected = currentRoute == route;
 
     return GestureDetector(
@@ -114,23 +134,5 @@ class NavigationBarMenuScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// Get the current index of the selected tab
-  int _getCurrentIndex(BuildContext context) {
-    final currentRoute = GoRouter.of(context).routeInformationProvider.value.uri.toString();
-    const routes = [
-      '/navigation/home',
-      '/navigation/contents',
-      '/navigation/sessions',
-      '/navigation/tickets',
-      '/navigation/user-management',
-      '/navigation/community',
-      '/navigation/support',
-      '/navigation/logout',
-    ];
-
-    int index = routes.indexOf(currentRoute);
-    return index != -1 ? index : 0; // Ensure it never returns -1
   }
 }

@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../models/videos_models.dart';
-import '../../../repository/upload_video_repository.dart';
 
-void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
+import '../../../models/ebooks_model.dart';
+import '../../../repository/ebooks_repository.dart';
+
+
+void showMindHubEbooksDialog(BuildContext context, List<Ebook> ebooks) {
   showDialog(
     context: context,
     builder: (context) {
@@ -13,8 +15,8 @@ void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.6, // 60% of screen width
-              height: MediaQuery.of(context).size.height * 0.7, // 70% of screen height
+              width: MediaQuery.of(context).size.width * 0.6,
+              height: MediaQuery.of(context).size.height * 0.7,
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -24,7 +26,7 @@ void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'MindHub Videos',
+                        'MindHub Ebooks',
                         style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 20),
                       ),
                       IconButton(
@@ -37,7 +39,7 @@ void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
                   ),
                   const SizedBox(height: 16),
 
-                  // **Video List with Drag & Drop Support**
+                  // **Ebook List with Drag & Drop Support**
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(8.0),
@@ -45,8 +47,8 @@ void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
                         border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: videos.isEmpty
-                          ? Center(child: Text("No videos added yet.", style: TextStyle(color: Colors.grey)))
+                      child: ebooks.isEmpty
+                          ? Center(child: Text("No ebooks added yet.", style: TextStyle(color: Colors.grey)))
                           : ReorderableListView(
                         shrinkWrap: true,
                         padding: EdgeInsets.zero,
@@ -55,30 +57,30 @@ void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
                             if (newIndex > oldIndex) {
                               newIndex -= 1;
                             }
-                            final item = videos.removeAt(oldIndex);
-                            videos.insert(newIndex, item);
+                            final item = ebooks.removeAt(oldIndex);
+                            ebooks.insert(newIndex, item);
                           });
                         },
                         children: [
-                          for (int index = 0; index < videos.length; index++)
+                          for (int index = 0; index < ebooks.length; index++)
                             Card(
-                              key: ValueKey(videos[index]),
+                              key: ValueKey(ebooks[index]),
                               margin: const EdgeInsets.symmetric(vertical: 5),
                               elevation: 2,
                               child: ListTile(
                                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 leading: Icon(Icons.drag_handle, color: Colors.blue),
-                                title: Text(videos[index].title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                title: Text(ebooks[index].title, maxLines: 1, overflow: TextOverflow.ellipsis),
                                 trailing: IconButton(
                                   icon: Icon(Icons.delete, color: Colors.red),
                                   onPressed: () {
                                     setState(() {
-                                      videos.removeAt(index);
+                                      ebooks.removeAt(index);
                                     });
                                   },
                                 ),
                                 onTap: () {
-                                  showVideoDialog(context, videos, videos[index]);
+                                  showEbookDialog(context, ebooks, ebooks[index]);
                                 },
                               ),
                             ),
@@ -97,10 +99,10 @@ void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
                       children: [
                         ElevatedButton.icon(
                           onPressed: () {
-                            showVideoDialog(context, videos, null);
+                            showEbookDialog(context, ebooks, null);
                           },
                           icon: Icon(Icons.add, color: Colors.white),
-                          label: Text("Add Video"),
+                          label: Text("Add Ebook"),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
                             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -109,12 +111,12 @@ void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
                         ),
                         ElevatedButton.icon(
                           onPressed: () {
-                            // Save videos logic
-                            print("Saving videos...");
+                            // Save ebooks logic
+                            print("Saving ebooks...");
                             Navigator.pop(context);
                           },
                           icon: Icon(Icons.save, color: Colors.white),
-                          label: Text("Save Videos"),
+                          label: Text("Save Ebooks"),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -146,16 +148,16 @@ void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
   );
 }
 
-/// **Dialog to Add or Edit a Video**
-void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdit) {
-  final VideoRepository videoRepo = VideoRepository();
-  final TextEditingController titleController = TextEditingController(text: videoToEdit?.title);
-  final TextEditingController descriptionController = TextEditingController(text: videoToEdit?.description);
-  String? thumbnailUrl;
-  String? videoUrl;
+/// **Dialog to Add or Edit an Ebook**
+void showEbookDialog(BuildContext context, List<Ebook> ebooks, Ebook? ebookToEdit) {
+  final EbookRepository ebookRepo = EbookRepository();
+  final TextEditingController titleController = TextEditingController(text: ebookToEdit?.title);
+  final TextEditingController descriptionController = TextEditingController(text: ebookToEdit?.description);
+  String? coverUrl;
+  String? ebookFileUrl;
 
-  File? pickedThumbnail;
-  File? pickedVideo;
+  File? pickedCover;
+  File? pickedEbook;
 
   showDialog(
     context: context,
@@ -168,7 +170,7 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(videoToEdit == null ? "Add New Video" : "Edit Video", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(ebookToEdit == null ? "Add New Ebook" : "Edit Ebook", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
 
               TextField(
@@ -182,14 +184,14 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
 
               const SizedBox(height: 16),
 
-              // **Thumbnail Picker**
+              // **Cover Picker**
               GestureDetector(
                 onTap: () async {
                   final ImagePicker picker = ImagePicker();
                   final XFile? image = await picker.pickImage(source: ImageSource.gallery);
                   if (image != null) {
-                    pickedThumbnail = File(image.path);
-                    thumbnailUrl = await videoRepo.uploadThumbnail(pickedThumbnail!);
+                    pickedCover = File(image.path);
+                    coverUrl = await ebookRepo.uploadCover(pickedCover!);
                   }
                 },
                 child: Container(
@@ -198,26 +200,26 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.blue),
                   ),
-                  child: pickedThumbnail == null
-                      ? Center(child: Text("Click to upload thumbnail"))
-                      : Image.file(pickedThumbnail!, fit: BoxFit.cover),
+                  child: pickedCover == null
+                      ? Center(child: Text("Click to upload cover image"))
+                      : Image.file(pickedCover!, fit: BoxFit.cover),
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // **Video Picker**
+              // **Ebook File Picker**
               ElevatedButton.icon(
                 onPressed: () async {
                   final ImagePicker picker = ImagePicker();
-                  final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
-                  if (video != null) {
-                    pickedVideo = File(video.path);
-                    videoUrl = await videoRepo.uploadVideo(pickedVideo!);
+                  final XFile? ebook = await picker.pickImage(source: ImageSource.gallery);
+                  if (ebook != null) {
+                    pickedEbook = File(ebook.path);
+                    ebookFileUrl = await ebookRepo.uploadEbook(pickedEbook!);
                   }
                 },
-                icon: Icon(Icons.video_library),
-                label: Text("Pick Video"),
+                icon: Icon(Icons.upload_file),
+                label: Text("Upload Ebook"),
               ),
 
               const SizedBox(height: 16),
@@ -240,28 +242,28 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
                   ),
                   ElevatedButton.icon(
                     onPressed: () async {
-                      final newVideo = Video(
+                      final newEbook = Ebook(
                         title: titleController.text,
                         description: descriptionController.text,
-                        thumbnail: thumbnailUrl ?? '',
-                        videoFile: videoUrl ?? '',
+                        cover: coverUrl ?? '',
+                        ebookFile: ebookFileUrl ?? '', id: '',
                       );
 
-                      if (videoToEdit == null) {
-                        videos.add(newVideo);
+                      if (ebookToEdit == null) {
+                        ebooks.add(newEbook);
                       } else {
-                        final index = videos.indexOf(videoToEdit);
-                        videos[index] = newVideo;
+                        final index = ebooks.indexOf(ebookToEdit);
+                        ebooks[index] = newEbook;
                       }
 
-                      // Save video to Firestore
-                      await videoRepo.saveVideo(newVideo);
+                      // Save ebook to Firestore
+                      await ebookRepo.saveEbook(newEbook);
 
                       Navigator.pop(context);
-                      showMindHubVideosDialog(context, videos);
+                      showMindHubEbooksDialog(context, ebooks);
                     },
                     icon: Icon(Icons.save, color: Colors.white),
-                    label: Text(videoToEdit == null ? "Add" : "Save"),
+                    label: Text(ebookToEdit == null ? "Add" : "Save"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
