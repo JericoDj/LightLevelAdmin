@@ -14,6 +14,7 @@ import 'package:lightlevelpsychosolutionsadmin/screens/contentsScreen/popups/min
 
 import '../../models/articles_model.dart';
 import '../../models/ebooks_model.dart';
+import '../../models/quiz_model.dart';
 import '../../models/videos_models.dart';
 
 class ContentsScreen extends StatelessWidget {
@@ -45,6 +46,162 @@ class ContentsScreen extends StatelessWidget {
         ebookFile: "science_of_positivity.pdf",
       ),
     ];
+// Sample Quiz Data - Mindfulness (Personality-Based)
+    Quiz mindfulnessQuiz = Quiz(
+      title: "Mindfulness",
+      isPersonalityBased: true,
+      questions: [
+        QuizQuestion(
+          question: "How often do you take a moment to breathe and be present?",
+          answers: [
+            QuizAnswer(text: "Very often", score: 3),
+            QuizAnswer(text: "Sometimes", score: 2),
+            QuizAnswer(text: "Rarely", score: 1),
+            QuizAnswer(text: "Almost never", score: 0),
+          ],
+        ),
+        QuizQuestion(
+          question: "Do you often catch yourself overthinking?",
+          answers: [
+            QuizAnswer(text: "Rarely", score: 3),
+            QuizAnswer(text: "Occasionally", score: 2),
+            QuizAnswer(text: "Often", score: 1),
+            QuizAnswer(text: "Always", score: 0),
+          ],
+        ),
+      ],
+    );
+
+    Quiz emotionalQuiz = Quiz(
+      title: "Emotional Intelligence",
+      isPersonalityBased: true,
+      questions: [
+        QuizQuestion(
+          question: "How well do you recognize emotions in yourself and others?",
+          answers: [
+            QuizAnswer(text: "Very well", score: 3),
+            QuizAnswer(text: "Sometimes", score: 2),
+            QuizAnswer(text: "Rarely", score: 1),
+            QuizAnswer(text: "Not at all", score: 0),
+          ],
+        ),
+      ],
+    );
+
+// Sample Quiz Data - Cognitive Skills (Knowledge-Based)
+    Quiz cognitiveQuiz = Quiz(
+      title: "Cognitive Skills",
+      isPersonalityBased: false,
+      questions: [
+        QuizQuestion(
+          question: "Which part of the brain is responsible for problem-solving?",
+          answers: [
+            QuizAnswer(text: "Frontal lobe", isCorrect: true),
+            QuizAnswer(text: "Occipital lobe", isCorrect: false),
+            QuizAnswer(text: "Temporal lobe", isCorrect: false),
+            QuizAnswer(text: "Parietal lobe", isCorrect: false),
+          ],
+        ),
+        QuizQuestion(
+          question: "What is 15 + 27?",
+          answers: [
+            QuizAnswer(text: "42", isCorrect: true),
+            QuizAnswer(text: "39", isCorrect: false),
+            QuizAnswer(text: "47", isCorrect: false),
+            QuizAnswer(text: "41", isCorrect: false),
+          ],
+        ),
+        QuizQuestion(
+          question: "What does CPU stand for?",
+          answers: [
+            QuizAnswer(text: "Central Processing Unit", isCorrect: true),
+            QuizAnswer(text: "Computer Power Unit", isCorrect: false),
+            QuizAnswer(text: "Central Program Unit", isCorrect: false),
+            QuizAnswer(text: "Central Processing Utility", isCorrect: false),
+          ],
+        ),
+        QuizQuestion(
+          question: "Which of the following is a prime number?",
+          answers: [
+            QuizAnswer(text: "17", isCorrect: true),
+            QuizAnswer(text: "21", isCorrect: false),
+            QuizAnswer(text: "33", isCorrect: false),
+            QuizAnswer(text: "44", isCorrect: false),
+          ],
+        ),
+      ],
+    );
+
+    Quiz resilienceQuiz = Quiz(
+      title: "Resilience",
+      isPersonalityBased: true, // Score-based
+      questions: [
+        QuizQuestion(
+          question: "How well do you handle stressful situations?",
+          answers: [
+            QuizAnswer(text: "Very well", score: 3),
+            QuizAnswer(text: "Sometimes well", score: 2),
+            QuizAnswer(text: "Not very well", score: 1),
+            QuizAnswer(text: "I often struggle", score: 0),
+          ],
+        ),
+      ],
+    );
+
+
+    Quiz deepFocusQuiz = Quiz(
+      title: "Deep Focus",
+      isPersonalityBased: true, // Score-based
+      questions: [
+        QuizQuestion(
+          question: "Do you find it easy to concentrate for long periods?",
+          answers: [
+            QuizAnswer(text: "Yes, very easy", score: 3),
+            QuizAnswer(text: "Sometimes", score: 2),
+            QuizAnswer(text: "Rarely", score: 1),
+            QuizAnswer(text: "No, I get distracted often", score: 0),
+          ],
+        ),
+      ],
+    );
+
+    Quiz mentalClarityQuiz = Quiz(
+      title: "Mental Clarity",
+      isPersonalityBased: true, // Score-based
+      questions: [
+        QuizQuestion(
+          question: "How well do you maintain focus throughout the day?",
+          answers: [
+            QuizAnswer(text: "Very well", score: 3),
+            QuizAnswer(text: "Somewhat well", score: 2),
+            QuizAnswer(text: "Not very well", score: 1),
+            QuizAnswer(text: "I get distracted easily", score: 0),
+          ],
+        ),
+      ],
+    );
+
+
+    Quiz positivityQuiz = Quiz(
+      title: "Positivity Boost",
+      isPersonalityBased: true, // Score-based
+      questions: [
+        QuizQuestion(
+          question: "How often do you practice gratitude?",
+          answers: [
+            QuizAnswer(text: "Daily", score: 3),
+            QuizAnswer(text: "A few times a week", score: 2),
+            QuizAnswer(text: "Rarely", score: 1),
+            QuizAnswer(text: "Never", score: 0),
+          ],
+        ),
+      ],
+    );
+
+
+
+
+
 
 
 
@@ -74,13 +231,13 @@ class ContentsScreen extends StatelessWidget {
 
             _buildSectionTitle('InsightQuest'),
             _buildOptionsRow(context, [
-              {'title': 'Mindfulness Quiz', 'dialog': () => showMindfulnessQuizDialog(context)},
-              {'title': 'Cognitive Quiz', 'dialog': () => showCognitiveQuizDialog(context)},
-              {'title': 'Emotional Intelligence Quiz', 'dialog': () => showEmotionalQuizDialog(context)},
-              {'title': 'Resilience Quiz', 'dialog': () => showResilienceQuizDialog(context)},
-              {'title': 'Deep Focus Quiz', 'dialog': () => showDeepFocusQuizDialog(context)},
-              {'title': 'Mental Clarity Quiz', 'dialog': () => showMentalClarityQuizDialog(context)},
-              {'title': 'Positivity Boost Quiz', 'dialog': () => showPositivityQuizDialog(context)},
+              {'title': 'Mindfulness Quiz', 'dialog': () => showMindfulnessQuizDialog(context, mindfulnessQuiz)},
+              {'title': 'Cognitive Quiz', 'dialog': () => showCognitiveQuizDialog(context, cognitiveQuiz)},
+              {'title': 'Emotional Intelligence Quiz', 'dialog': () => showEmotionalQuizDialog(context,emotionalQuiz)},
+              {'title': 'Resilience Quiz', 'dialog': () => showResilienceQuizDialog(context,resilienceQuiz)},
+              {'title': 'Deep Focus Quiz', 'dialog': () => showDeepFocusQuizDialog(context,deepFocusQuiz)},
+              {'title': 'Mental Clarity Quiz', 'dialog': () => showMentalClarityQuizDialog(context, mentalClarityQuiz)},
+              {'title': 'Positivity Boost Quiz', 'dialog': () => showPositivityQuizDialog(context,positivityQuiz)},
             ]),
           ],
         ),
