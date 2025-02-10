@@ -71,14 +71,15 @@ class NavigationBarMenuScreen extends StatelessWidget {
                         children: [
                           _buildSidebarItem(
                               context, 'Home', '/navigation/home'),
+                          _buildSidebarItem(context, 'User Management',
+                              '/navigation/user-management'),
                           _buildSidebarItem(
                               context, 'Contents', '/navigation/contents'),
                           _buildSidebarItem(
                               context, 'Sessions', '/navigation/sessions'),
                           _buildSidebarItem(
                               context, 'Tickets', '/navigation/tickets'),
-                          _buildSidebarItem(context, 'User Management',
-                              '/navigation/user-management'),
+
                           _buildSidebarItem(
                               context, 'Community', '/navigation/community'),
                           _buildSidebarItem(
