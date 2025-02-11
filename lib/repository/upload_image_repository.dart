@@ -15,14 +15,7 @@ Future<void> uploadUserProfilePicture(BuildContext context) async {
   try {
     imageUploading.value = true;
 
-    // Check for internet connection (Replace with your network check logic)
-    final bool isConnected = true;
-    if (!isConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No Internet Connection. Please check your network and try again.')),
-      );
-      return;
-    }
+
 
     if (kIsWeb) {
       // Web-specific file picking

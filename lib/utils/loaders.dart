@@ -26,8 +26,8 @@ class MyLoaders {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(30),
               color: MyHelperFunctions.isDarkMode(Get.context!)
-                  ? MyColors.darkerGrey.withOpacity(0.9)
-                  : MyColors.grey.withOpacity(0.9),
+                  ? MyColors.black.withOpacity(0.9)
+                  : MyColors.black.withOpacity(0.9),
             ),
             child: Center(
               child: Text(
@@ -52,7 +52,7 @@ class MyLoaders {
       isDismissible: true,
       shouldIconPulse: true,
       colorText: Colors.white,
-      backgroundColor: MyColors.primaryColor,
+      backgroundColor: MyColors.color1,
       snackPosition: SnackPosition.BOTTOM,
       duration: Duration(seconds: duration),
       margin: const EdgeInsets.all(10),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
 
 class NavigationBarMenuScreen extends StatelessWidget {
   final Widget child; // Accepts child for ShellRoute navigation
@@ -10,8 +11,6 @@ class NavigationBarMenuScreen extends StatelessWidget {
     return WillPopScope(
       onWillPop: () async {
         final router = GoRouter.of(context);
-
-        // Define tab routes correctly
         const routes = [
           '/navigation/home',
           '/navigation/contents',
@@ -23,35 +22,39 @@ class NavigationBarMenuScreen extends StatelessWidget {
           '/navigation/logout',
         ];
 
-        int currentIndex = routes.indexOf(GoRouter
-            .of(context)
-            .routeInformationProvider
-            .value
-            .uri
-            .toString());
+        int currentIndex = routes.indexOf(router.routeInformationProvider.value.uri.toString());
 
         if (currentIndex > 0) {
-          // Move back to the previous tab instead of closing the app
           router.go(routes[currentIndex - 1]);
-          return false; // Prevent default back behavior (app exit)
+          return false; // Prevents exiting the app
         }
-
-        return true; // Allow the app to exit only when at the first tab
+        return true; // Allows app exit at the first tab
       },
       child: Scaffold(
+        backgroundColor: MyColors.white,
         appBar: AppBar(
-          title: const Text('Admin Panel'),
-          backgroundColor: Colors.blue,
-          elevation: 0,
+          title: const Text('Admin Panel',style: TextStyle(color: Colors.white),),
+          backgroundColor: MyColors.color1,
+          elevation: 3,
         ),
         body: Row(
           children: [
-            // Sidebar for wide screens
+            // Sidebar Navigation
             Expanded(
-              flex: 3,
+              flex: 2,
               child: Container(
-                color: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -59,33 +62,25 @@ class NavigationBarMenuScreen extends StatelessWidget {
                       padding: EdgeInsets.symmetric(horizontal: 20),
                       child: Text(
                         'Navigation',
-                        style: TextStyle(fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: MyColors.color1,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
-
                     Expanded(
                       child: ListView(
                         children: [
-                          _buildSidebarItem(
-                              context, 'Home', '/navigation/home'),
-                          _buildSidebarItem(context, 'User Management',
-                              '/navigation/user-management'),
-                          _buildSidebarItem(
-                              context, 'Contents', '/navigation/contents'),
-                          _buildSidebarItem(
-                              context, 'Sessions', '/navigation/sessions'),
-                          _buildSidebarItem(
-                              context, 'Tickets', '/navigation/tickets'),
-
-                          _buildSidebarItem(
-                              context, 'Community', '/navigation/community'),
-                          _buildSidebarItem(
-                              context, 'Support', '/navigation/support'),
-                          _buildSidebarItem(
-                              context, 'Logout', '/navigation/logout'),
+                          _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
+                          _buildSidebarItem(context, Icons.people, 'User Management', '/navigation/user-management'),
+                          _buildSidebarItem(context, Icons.article, 'Contents', '/navigation/contents'),
+                          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
+                          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
+                          _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
+                          _buildSidebarItem(context, Icons.support, 'Support', '/navigation/support'),
+                          _buildLogoutItem(context),
                         ],
                       ),
                     ),
@@ -94,44 +89,74 @@ class NavigationBarMenuScreen extends StatelessWidget {
               ),
             ),
 
-            // Main Content - Shows the active tab
-            Expanded(flex: 7, child: child),
+            // Main Content
+            Expanded(flex: 8, child: child),
           ],
         ),
-
-        // Bottom Navigation for mobile
-
       ),
     );
   }
 
-  /// Sidebar Item Builder
-  Widget _buildSidebarItem(BuildContext context, String title, String route) {
-    final currentRoute = GoRouter
-        .of(context)
-        .routeInformationProvider
-        .value
-        .uri
-        .toString();
+  /// Sidebar Item with Icons & Improved Styling
+  Widget _buildSidebarItem(BuildContext context, IconData icon, String title, String route) {
+    final currentRoute = GoRouter.of(context).routeInformationProvider.value.uri.toString();
     final bool isSelected = currentRoute == route;
 
     return GestureDetector(
       onTap: () => context.go(route),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue[50] : Colors.white,
+          color: isSelected ? MyColors.color1.withOpacity(0.15) : Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: isSelected ? Border.all(color: Colors.blue, width: 2) : null,
+          border: isSelected ? Border.all(color: MyColors.color1, width: 2) : null,
         ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            color: isSelected ? Colors.blue : Colors.grey,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? MyColors.color1 : Colors.grey),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                color: isSelected ? MyColors.color1 : Colors.grey[800],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Logout Button with a More Professional Look
+  Widget _buildLogoutItem(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.go('/login'),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.red[50],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.red, width: 2),
+        ),
+        child: Row(
+          children: const [
+            Icon(Icons.logout, color: Colors.red),
+            SizedBox(width: 10),
+            Text(
+              'Logout',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );
