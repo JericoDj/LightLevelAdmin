@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get/get.dart';
 
 class UserManagementScreen extends StatefulWidget {
   @override
@@ -9,30 +10,56 @@ class UserManagementScreen extends StatefulWidget {
 class _UserManagementScreenState extends State<UserManagementScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+
   void _showCompanyDialog({String? companyId, String? existingName}) {
-    TextEditingController companyController = TextEditingController(text: existingName);
+    TextEditingController companyNameController = TextEditingController(text: existingName);
+    TextEditingController companyIdController = TextEditingController(text: companyId);
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text(companyId == null ? "Add Company" : "Edit Company"),
-          content: TextField(
-            controller: companyController,
-            decoration: InputDecoration(labelText: "Company Name"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: companyIdController,
+                decoration: InputDecoration(labelText: "Company ID"),
+                enabled: companyId == null, // Prevent editing existing IDs
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: companyNameController,
+                decoration: InputDecoration(labelText: "Company Name"),
+              ),
+            ],
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
             ElevatedButton(
               onPressed: () async {
-                if (companyController.text.isNotEmpty) {
-                  if (companyId == null) {
-                    await _firestore.collection("companies").add({"name": companyController.text});
+                if (companyNameController.text.isNotEmpty && companyIdController.text.isNotEmpty) {
+                  String newCompanyId = companyIdController.text.trim();
+
+                  // Ensure companyId is unique before adding
+                  var existingCompany = await _firestore
+                      .collection("companies")
+                      .doc(newCompanyId)
+                      .get();
+
+                  if (!existingCompany.exists || companyId != null) {
+                    await _firestore.collection("companies").doc(newCompanyId).set({
+                      "companyId": newCompanyId,
+                      "name": companyNameController.text.trim(),
+                    });
+
+                    Navigator.pop(context);
                   } else {
-                    await _firestore.collection("companies").doc(companyId).update({"name": companyController.text});
+                    Get.snackbar("Error", "Company ID already exists. Please choose another.",
+                        snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
                   }
                 }
-                Navigator.pop(context);
               },
               child: Text(companyId == null ? "Add" : "Update"),
             ),
@@ -41,7 +68,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       },
     );
   }
-
   void _deleteCompany(String companyId) async {
     await _firestore.collection("companies").doc(companyId).delete();
   }
@@ -202,18 +228,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 5),
                         child: ListTile(
-                          title: Text(company["name"]),
-                          onTap: () => _showUsersDialog(company.id, company["name"]),
+                          title: Text("${company["name"]}"),
+                          subtitle: Text("ID: ${company["companyId"]}"), // Displaying company ID
+                          onTap: () => _showUsersDialog(company["companyId"], company["name"]),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () => _showCompanyDialog(companyId: company.id, existingName: company["name"]),
+                                onPressed: () => _showCompanyDialog(companyId: company["companyId"], existingName: company["name"]),
                               ),
                               IconButton(
                                 icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteCompany(company.id),
+                                onPressed: () => _deleteCompany(company["companyId"]),
                               ),
                             ],
                           ),
