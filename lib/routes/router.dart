@@ -48,7 +48,8 @@ final GoRouter router = GoRouter(
       routes: [
         GoRoute(path: '/navigation/home', builder: (context, state) =>HomeScreen()),
         GoRoute(path: '/navigation/contents', builder: (context, state) =>  ContentsScreen()),
-        GoRoute(path: '/navigation/sessions', builder: (context, state) => TestApp()),
+        GoRoute(path: '/navigation/sessions', builder: (context, state) => SessionsScreen()),
+        GoRoute(path: '/navigation/test', builder: (context, state) => TestApp()),
         GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
         GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
         GoRoute(path: '/navigation/community', builder: (context, state) => CommunityScreen()),

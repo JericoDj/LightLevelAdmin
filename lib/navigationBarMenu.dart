@@ -77,6 +77,7 @@ class NavigationBarMenuScreen extends StatelessWidget {
                           _buildSidebarItem(context, Icons.people, 'User Management', '/navigation/user-management'),
                           _buildSidebarItem(context, Icons.article, 'Contents', '/navigation/contents'),
                           _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
+                          _buildSidebarItem(context, Icons.video_camera_front, 'Test', '/navigation/test'),
                           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
                           _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
                           _buildSidebarItem(context, Icons.support, 'Support', '/navigation/support'),
