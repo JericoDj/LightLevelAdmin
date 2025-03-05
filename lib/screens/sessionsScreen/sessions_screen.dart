@@ -4,7 +4,6 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/sessionsScreen/signalling.dart';
-import 'package:lightlevelpsychosolutionsadmin/screens/sessionsScreen/video_call_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SessionsScreen extends StatefulWidget {
