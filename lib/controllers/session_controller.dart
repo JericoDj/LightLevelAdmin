@@ -29,7 +29,7 @@ class SessionsController {
       String? callRoom = data['callRoom'];
 
       if (callRoom != null && callRoom.isNotEmpty) {
-        GoRouter.of(context).go('/navigation/${sessionType.toLowerCase()}/$userId/$callRoom');
+        GoRouter.of(context).push('/navigation/talk/$userId/$callRoom'); // ✅ Opens in a new window
       } else {
         print("❌ No valid callRoom found for user: $userId");
       }
@@ -37,6 +37,7 @@ class SessionsController {
       print("❌ Document not found for user: $userId");
     }
   }
+
 
 
 

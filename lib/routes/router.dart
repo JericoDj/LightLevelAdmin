@@ -9,8 +9,9 @@ import '../screens/homescreen/homeScreen.dart';
 import '../screens/loginScreen/loginScreen.dart';
 import '../screens/sessionsScreen/chat_screen.dart';
 import '../screens/sessionsScreen/sessions_screen.dart';
-import '../screens/sessionsScreen/video_call_screen.dart';
+import '../screens/supportScreen/support_call_page.dart';
 import '../screens/supportScreen/support_screen.dart';
+import '../screens/test/test/pages/callPage/call_page.dart';
 import '../screens/ticketsScreen/tickets_screen.dart';
 import '../screens/userManagementScreen/user_management_screen.dart';
 import '../navigationBarMenu.dart';
@@ -18,12 +19,11 @@ import '../navigationBarMenu.dart';
 final GoRouter router = GoRouter(
   initialLocation: '/navigation/home',
   routes: [
-    // Login Route
+    // ✅ Login Routes
     GoRoute(
       path: '/login',
       builder: (context, state) => LoginScreen(),
     ),
-
     GoRoute(
       path: '/forgot-password',
       builder: (context, state) => ForgotPasswordScreen(),
@@ -33,29 +33,35 @@ final GoRouter router = GoRouter(
       builder: (context, state) => SignUpScreen(),
     ),
 
-    // ✅ Modified Route for Video Call with `callRoom`
+    // ✅ Call Route for Talk Sessions
     GoRoute(
-      path: '/navigation/videocall/:roomId',
+      path: '/navigation/talk/:userId/:roomId',
       builder: (context, state) {
-        final String roomId = state.pathParameters['roomId'] ?? "";
-        return VideoCallScreen(roomId: roomId);
-      },
-    ),
-
-    // ✅ New Route for Open Session using `callRoom`
-    GoRoute(
-      path: '/navigation/:sessionType/:userId/:callRoom',
-      builder: (context, state) {
-        final String sessionType = state.pathParameters['sessionType'] ?? "";
         final String userId = state.pathParameters['userId'] ?? "";
-        final String callRoom = state.pathParameters['callRoom'] ?? "";
+        final String roomId = state.pathParameters['roomId'] ?? "";
 
-        return sessionType.toLowerCase() == 'chat'
-            ? ChatScreen(userId: userId)
-            : VideoCallScreen(roomId: callRoom);
+        return CallPage(
+          roomId: roomId,
+          isCaller: false,
+        );
       },
     ),
 
+    // ✅ New Support Call Route
+    GoRoute(
+      path: '/navigation/support/:userId/:roomId',
+      builder: (context, state) {
+        final String userId = state.pathParameters['userId'] ?? "";
+        final String roomId = state.pathParameters['roomId'] ?? "";
+
+        return SupportCallPage(
+          roomId: roomId,
+          isCaller: false,
+        );
+      },
+    ),
+
+    // ✅ Chat Route
     GoRoute(
       path: '/navigation/chat/:userId',
       builder: (context, state) {
@@ -64,7 +70,7 @@ final GoRouter router = GoRouter(
       },
     ),
 
-    // Parent Route: Navigation Bar with Nested Tabs
+    // ✅ Navigation Bar with Nested Routes
     ShellRoute(
       builder: (context, state, child) {
         return NavigationBarMenuScreen(child: child);
@@ -73,11 +79,17 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/navigation/home', builder: (context, state) => HomeScreen()),
         GoRoute(path: '/navigation/contents', builder: (context, state) => ContentsScreen()),
         GoRoute(path: '/navigation/sessions', builder: (context, state) => SessionsScreen()),
+        GoRoute(path: '/navigation/support', builder: (context, state) => SupportScreen()),
         GoRoute(path: '/navigation/test', builder: (context, state) => TestApp()),
         GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
         GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
         GoRoute(path: '/navigation/community', builder: (context, state) => CommunityScreen()),
-        GoRoute(path: '/navigation/support', builder: (context, state) => SupportScreen()),
+
+        // ✅ New Support Screen Route
+        GoRoute(
+          path: '/navigation/support',
+          builder: (context, state) => SupportScreen(),
+        ),
       ],
     ),
   ],

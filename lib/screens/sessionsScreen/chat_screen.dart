@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // ✅ FirebaseAuth for UID
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -16,51 +16,51 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late String chatRoomId;
-  String? currentAdminUid; // ✅ Store admin's UID
+  String? currentAdminUid;
 
   @override
   void initState() {
     super.initState();
-    chatRoomId = "safe_talk/chat/sessions/${widget.userId}/messages"; // Firestore path
-    _getCurrentAdminUid(); // ✅ Fetch admin's UID
+    chatRoomId = "safe_talk/chat/sessions/${widget.userId}/messages";
+    _getCurrentAdminUid();
   }
 
-  // ✅ Get the current admin's UID
   void _getCurrentAdminUid() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       setState(() {
         currentAdminUid = user.uid;
       });
-      print("✅ Admin UID: $currentAdminUid");
-    } else {
-      print("❌ ERROR: Admin not logged in!");
     }
   }
 
-  // ✅ Send Message to Firestore (Admin as Sender)
   void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || currentAdminUid == null) {
-      print("❌ ERROR: Message is empty or UID is null");
-      return;
+    if (_messageController.text.trim().isEmpty || currentAdminUid == null) return;
+
+    final sessionRef = FirebaseFirestore.instance.collection("safe_talk/chat/queue").doc(widget.userId);
+    final sessionSnapshot = await sessionRef.get();
+
+    // Check if chat is finished/cancelled
+    if (sessionSnapshot.exists) {
+      final status = sessionSnapshot.data()?['status'];
+      if (status == "finished" || status == "cancelled") {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ This chat session is closed. No more messages allowed.")),
+        );
+        return;
+      }
     }
 
-    try {
-      await FirebaseFirestore.instance.collection(chatRoomId).add({
-        "senderId": currentAdminUid, // ✅ Admin UID as sender
-        "message": _messageController.text.trim(),
-        "timestamp": FieldValue.serverTimestamp(),
-      });
+    await FirebaseFirestore.instance.collection(chatRoomId).add({
+      "senderId": currentAdminUid,
+      "message": _messageController.text.trim(),
+      "timestamp": FieldValue.serverTimestamp(),
+    });
 
-      print("✅ Message sent by $currentAdminUid: ${_messageController.text}");
-      _messageController.clear();
-      _scrollToBottom(); // Scroll down to latest message
-    } catch (e) {
-      print("❌ ERROR sending message: $e");
-    }
+    _messageController.clear();
+    _scrollToBottom();
   }
 
-  // ✅ Scroll to the latest message
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 500), () {
       if (_scrollController.hasClients) {
@@ -73,37 +73,54 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  // ✅ Finish Chat - Update Firestore & Close Window
   void _finishChat() async {
+    final sessionRef = FirebaseFirestore.instance.collection("safe_talk/chat/queue").doc(widget.userId);
+
     try {
-      await FirebaseFirestore.instance.collection("safe_talk/chat/queue").doc(widget.userId).update({
-        "status": "finished",
+      await sessionRef.update({"status": "finished"});
+
+      await FirebaseFirestore.instance.collection(chatRoomId).add({
+        "senderId": "system",
+        "message": "✅ This chat session has been marked as finished.",
+        "timestamp": FieldValue.serverTimestamp(),
       });
 
-      print("✅ Chat finished for user ${widget.userId}");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Chat session marked as finished.")),
+      );
+
+      await Future.delayed(const Duration(seconds: 2));
       _closeWindow();
+
     } catch (e) {
-      print("❌ ERROR finishing chat: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Error finishing chat: $e")),
+      );
     }
   }
 
-  // ✅ Cancel Chat - Update Firestore & Close Window
   void _cancelChat() async {
+    final sessionRef = FirebaseFirestore.instance.collection("safe_talk/chat/queue").doc(widget.userId);
+
     try {
-      await FirebaseFirestore.instance.collection("safe_talk/chat/queue").doc(widget.userId).update({
-        "status": "cancelled",
+      await sessionRef.update({"status": "cancelled"});
+
+      await FirebaseFirestore.instance.collection(chatRoomId).add({
+        "senderId": "system",
+        "message": "❌ This chat session has been cancelled.",
+        "timestamp": FieldValue.serverTimestamp(),
       });
 
-      print("❌ Chat cancelled for user ${widget.userId}");
       _closeWindow();
     } catch (e) {
-      print("❌ ERROR cancelling chat: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Error cancelling chat: $e")),
+      );
     }
   }
 
-  // ✅ Close Chat Window
   void _closeWindow() {
-    GoRouter.of(context).go('/navigation/sessions'); // Navigate back to Sessions
+    GoRouter.of(context).go('/navigation/sessions');
   }
 
   @override
@@ -114,47 +131,52 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.exit_to_app, color: Colors.white),
-            onPressed: _closeWindow, // Exit chat
+            onPressed: _closeWindow,
           ),
         ],
       ),
       body: Column(
         children: [
-          // ✅ Messages List (Real-time updates from Firestore)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection(chatRoomId)
-                  .orderBy("timestamp", descending: false) // Oldest messages first
+                  .orderBy("timestamp", descending: false)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                var messages = snapshot.data!.docs;
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final messages = snapshot.data!.docs;
 
                 return ListView.builder(
                   controller: _scrollController,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    var messageData = messages[index].data() as Map<String, dynamic>;
-                    bool isAdmin = messageData["senderId"] == currentAdminUid; // ✅ Check if admin is the sender
+                    final messageData = messages[index].data() as Map<String, dynamic>;
+                    final isAdmin = messageData["senderId"] == currentAdminUid;
+                    final isSystem = messageData["senderId"] == "system";
 
                     return Align(
-                      alignment: isAdmin ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: isSystem
+                          ? Alignment.center
+                          : isAdmin
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                         decoration: BoxDecoration(
-                          color: isAdmin ? Colors.blueAccent : Colors.grey.shade300,
+                          color: isAdmin
+                              ? Colors.blueAccent
+                              : isSystem
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           messageData["message"] ?? "",
                           style: TextStyle(
-                            color: isAdmin ? Colors.white : Colors.black87,
-                            fontSize: 16,
+                            color: isAdmin || isSystem ? Colors.white : Colors.black87,
+                            fontStyle: isSystem ? FontStyle.italic : FontStyle.normal,
                           ),
                         ),
                       ),
@@ -164,10 +186,55 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection("safe_talk/chat/queue")
+                .doc(widget.userId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              bool isFinished = false;
+              if (snapshot.hasData && snapshot.data!.exists) {
+                final status = snapshot.data!["status"];
+                isFinished = status == "finished" || status == "cancelled";
+              }
 
-          // ✅ Chat Action Buttons
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: isFinished
+                    ? Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    "✅ This chat session has ended. You cannot send messages.",
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+                    : Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(
+                          hintText: "Type a message...",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.send, color: Colors.blueAccent),
+                      onPressed: _sendMessage,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.only(bottom: 12.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -180,32 +247,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   onPressed: _cancelChat,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   child: const Text("Cancel Chat"),
-                ),
-              ],
-            ),
-          ),
-
-          // ✅ Message Input Field
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: "Type a message...",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blueAccent),
-                  onPressed: _sendMessage,
                 ),
               ],
             ),
