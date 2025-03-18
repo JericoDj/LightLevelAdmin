@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import 'package:top_snackbar_flutter/custom_snack_bar.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 class UserManagementScreen extends StatefulWidget {
   @override
@@ -11,63 +13,102 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
 
-  void _showCompanyDialog({String? companyId, String? existingName}) {
+  void _showCompanyDialog({String? companyId, String? existingName, String? existingRole}) {
     TextEditingController companyNameController = TextEditingController(text: existingName);
     TextEditingController companyIdController = TextEditingController(text: companyId);
+    String selectedRole = existingRole ?? "User"; // Default role
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text(companyId == null ? "Add Company" : "Edit Company"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: companyIdController,
-                decoration: InputDecoration(labelText: "Company ID"),
-                enabled: companyId == null, // Prevent editing existing IDs
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(companyId == null ? "Add Company" : "Edit Company"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: companyIdController,
+                    decoration: InputDecoration(labelText: "Company ID"),
+                    enabled: companyId == null, // Prevent editing existing IDs
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: companyNameController,
+                    decoration: InputDecoration(labelText: "Company Name"),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    items: ["Specialist", "Admin", "Super Admin", "User"]
+                        .map((role) => DropdownMenuItem(
+                      value: role,
+                      child: Text(role),
+                    ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => selectedRole = value);
+                      }
+                    },
+                    decoration: InputDecoration(labelText: "Company Role"),
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: companyNameController,
-                decoration: InputDecoration(labelText: "Company Name"),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
-            ElevatedButton(
-              onPressed: () async {
-                if (companyNameController.text.isNotEmpty && companyIdController.text.isNotEmpty) {
-                  String newCompanyId = companyIdController.text.trim();
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+                ElevatedButton(
+                  onPressed: () async {
+                    String newCompanyId = companyIdController.text.trim();
+                    String companyName = companyNameController.text.trim();
 
-                  // Ensure companyId is unique before adding
-                  var existingCompany = await _firestore
-                      .collection("companies")
-                      .doc(newCompanyId)
-                      .get();
+                    if (newCompanyId.isEmpty || companyName.isEmpty) {
+                      showTopSnackBar(
+                        Overlay.of(context),
+                        const CustomSnackBar.error(
+                          message: "Company ID and Name cannot be empty.",
+                        ),
+                      );
+                      return;
+                    }
 
-                  if (!existingCompany.exists || companyId != null) {
-                    await _firestore.collection("companies").doc(newCompanyId).set({
-                      "companyId": newCompanyId,
-                      "name": companyNameController.text.trim(),
-                    });
+                    var existingCompany = await _firestore.collection("companies").doc(newCompanyId).get();
 
-                    Navigator.pop(context);
-                  } else {
-                    Get.snackbar("Error", "Company ID already exists. Please choose another.",
-                        snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
-                  }
-                }
-              },
-              child: Text(companyId == null ? "Add" : "Update"),
-            ),
-          ],
+                    if (!existingCompany.exists || companyId != null) {
+                      await _firestore.collection("companies").doc(newCompanyId).set({
+                        "companyId": newCompanyId,
+                        "name": companyName,
+                        "role": selectedRole, // Add role to Firestore
+                      });
+
+                      Navigator.pop(context);
+
+                      showTopSnackBar(
+                        Overlay.of(context),
+                        const CustomSnackBar.success(
+                          message: "Company saved successfully!",
+                        ),
+                      );
+                    } else {
+                      showTopSnackBar(
+                        Overlay.of(context),
+                        const CustomSnackBar.error(
+                          message: "Company ID already exists. Please choose another.",
+                        ),
+                      );
+                    }
+                  },
+                  child: Text(companyId == null ? "Add" : "Update"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
+
   void _deleteCompany(String companyId) async {
     await _firestore.collection("companies").doc(companyId).delete();
   }
@@ -225,18 +266,26 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     itemCount: companies.length,
                     itemBuilder: (context, index) {
                       var company = companies[index];
+
+                      // Ensure 'role' field exists in Firestore data
+                      String companyRole = company["role"] ?? "User";
+
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 5),
                         child: ListTile(
                           title: Text("${company["name"]}"),
-                          subtitle: Text("ID: ${company["companyId"]}"), // Displaying company ID
+                          subtitle: Text("ID: ${company["companyId"]} | Role: $companyRole"), // ✅ Displaying company role
                           onTap: () => _showUsersDialog(company["companyId"], company["name"]),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () => _showCompanyDialog(companyId: company["companyId"], existingName: company["name"]),
+                                onPressed: () => _showCompanyDialog(
+                                  companyId: company["companyId"],
+                                  existingName: company["name"],
+                                  existingRole: companyRole, // ✅ Passing role when editing
+                                ),
                               ),
                               IconButton(
                                 icon: Icon(Icons.delete, color: Colors.red),

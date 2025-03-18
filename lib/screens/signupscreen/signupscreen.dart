@@ -53,6 +53,22 @@ class SignUpScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 30),
 
+                    // Company ID Field (NEW)
+                    TextFormField(
+                      controller: controller.companyIdController,
+                      decoration: InputDecoration(
+                        labelText: "Company ID",
+                        prefixIcon: const Icon(Icons.business_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      validator: (value) => value != null && value.isNotEmpty
+                          ? null
+                          : 'Enter your company ID',
+                    ),
+                    const SizedBox(height: 20),
+
                     // Email Field
                     TextFormField(
                       controller: controller.emailController,
@@ -67,22 +83,6 @@ class SignUpScreen extends StatelessWidget {
                       validator: (value) => value != null && value.contains('@')
                           ? null
                           : 'Enter a valid email',
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Username Field
-                    TextFormField(
-                      controller: controller.usernameController,
-                      decoration: InputDecoration(
-                        labelText: "Username",
-                        prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      validator: (value) => value != null && value.isNotEmpty
-                          ? null
-                          : 'Enter a username',
                     ),
                     const SizedBox(height: 20),
 
@@ -133,7 +133,8 @@ class SignUpScreen extends StatelessWidget {
                     // Confirm Password Field
                     Obx(() => TextFormField(
                       controller: controller.confirmPasswordController,
-                      obscureText: !controller.isConfirmPasswordVisible.value,
+                      obscureText:
+                      !controller.isConfirmPasswordVisible.value,
                       decoration: InputDecoration(
                         labelText: "Confirm Password",
                         prefixIcon: const Icon(Icons.lock_outline),
@@ -152,7 +153,8 @@ class SignUpScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      validator: (value) => value == controller.passwordController.text
+                      validator: (value) =>
+                      value == controller.passwordController.text
                           ? null
                           : 'Passwords do not match',
                     )),
@@ -160,7 +162,7 @@ class SignUpScreen extends StatelessWidget {
 
                     // Sign Up Button
                     ElevatedButton(
-                      onPressed: () => controller.registerAdmin(context), // ✅ Fix: Pass context via anonymous function
+                      onPressed: () => controller.registerAdmin(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: MyColors.color2,
                         minimumSize: const Size(double.infinity, 50),

@@ -10,12 +10,14 @@ import 'myApp.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ✅ Register web plugins properly
+  setUrlStrategy(PathUrlStrategy());
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // ✅ Register web plugins properly
-  setUrlStrategy(PathUrlStrategy());
+
 
   runApp(
 

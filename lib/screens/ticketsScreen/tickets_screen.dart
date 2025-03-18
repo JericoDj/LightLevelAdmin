@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class TicketsScreen extends StatefulWidget {
@@ -6,40 +7,71 @@ class TicketsScreen extends StatefulWidget {
 }
 
 class _TicketsScreenState extends State<TicketsScreen> {
-  List<Map<String, dynamic>> tickets = [
-    // Normal Tickets
-    {"id": "1", "user": "John Doe", "subject": "App Not Working", "status": "pending", "type": "normal"},
-    {"id": "2", "user": "Jane Smith", "subject": "Billing Issue", "status": "in-progress", "type": "normal"},
-    {"id": "3", "user": "Michael Brown", "subject": "Feature Request", "status": "resolved", "type": "normal"},
-    {"id": "4", "user": "Alice Johnson", "subject": "Login Problem", "status": "cancelled", "type": "normal"},
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-    // Immediate Concern Tickets
-    {"id": "5", "user": "Emily Davis", "subject": "Urgent Payment Issue", "status": "queue", "type": "immediate"},
-    {"id": "6", "user": "Daniel Moore", "subject": "Account Compromised", "status": "ongoing", "type": "immediate"},
-    {"id": "7", "user": "Sarah Wilson", "subject": "System Outage", "status": "finished", "type": "immediate"},
-    {"id": "8", "user": "Chris Lee", "subject": "Security Breach", "status": "finished", "type": "immediate"},
-  ];
+  Map<String, List<Map<String, dynamic>>> tickets = {};
+  bool isLoading = true;
 
-  void _updateStatus(String ticketId, String newStatus) {
-    setState(() {
-      tickets.firstWhere((ticket) => ticket["id"] == ticketId)["status"] = newStatus;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _fetchTickets();
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending': return Colors.orange;
-      case 'in-progress': return Colors.blue;
-      case 'resolved': return Colors.green;
-      case 'cancelled': return Colors.red;
-      case 'queue': return Colors.purple;
-      case 'ongoing': return Colors.blueAccent;
-      case 'finished': return Colors.teal;
-      default: return Colors.grey;
+  // ✅ Fetch tickets from Firestore
+  Future<void> _fetchTickets() async {
+    try {
+      final snapshot = await _firestore.collectionGroup('tickets').get();
+
+      final fetchedTickets = <String, List<Map<String, dynamic>>>{};
+
+      for (var doc in snapshot.docs) {
+        final ticket = doc.data();
+        final ticketType = ticket['type'] ?? 'normal';
+
+        if (!fetchedTickets.containsKey(ticketType)) {
+          fetchedTickets[ticketType] = [];
+        }
+
+        fetchedTickets[ticketType]?.add({
+          "id": ticket['ticketId'],
+          "user": ticket['userId'],
+          "subject": ticket['title'],
+          "status": ticket['status'],
+          "created_at": ticket['created_at'],
+          "type": ticketType,
+        });
+      }
+
+      setState(() {
+        tickets = fetchedTickets;
+        isLoading = false;
+      });
+
+    } catch (e) {
+      print("❌ Error fetching tickets: $e");
+      setState(() => isLoading = false);
     }
   }
 
-  void _viewTicketDetails(Map<String, dynamic> ticket) {
+  // ✅ Fetch Messages for a specific ticket
+  Future<List<Map<String, dynamic>>> _fetchMessages(String ticketId) async {
+    try {
+      final snapshot = await _firestore
+          .collectionGroup('messages')
+          .where('ticketId', isEqualTo: ticketId)
+          .get();
+
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      print("❌ Error fetching messages: $e");
+      return [];
+    }
+  }
+
+  void _viewTicketDetails(Map<String, dynamic> ticket) async {
+    final messages = await _fetchMessages(ticket['id']);
+
     TextEditingController replyController = TextEditingController();
 
     showDialog(
@@ -47,91 +79,49 @@ class _TicketsScreenState extends State<TicketsScreen> {
       builder: (context) {
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          insetPadding: EdgeInsets.all(20),
+          insetPadding: const EdgeInsets.all(20),
           child: Container(
-            padding: EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
             width: MediaQuery.of(context).size.width * 0.7,
             height: MediaQuery.of(context).size.height * 0.8,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Ticket #${ticket['id']}",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[800],
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close, color: Colors.grey[600]),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Text(
-                  ticket['subject'],
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                ),
-                SizedBox(height: 16),
-                Divider(thickness: 1.5),
-                SizedBox(height: 16),
-
+                Text("Ticket #${ticket['id']}",
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    )),
+                const SizedBox(height: 8),
+                Text(ticket['subject'],
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    )),
+                const Divider(thickness: 1.5),
                 Expanded(
-                  child: ListView(
-                    children: [
-                      _buildMessageTile("User: ${ticket['user']}", "I'm experiencing an issue with...", false),
-                      _buildMessageTile("Support Agent", "Could you please provide more details?", true),
-                    ],
+                  child: messages.isEmpty
+                      ? const Center(child: Text("No messages yet"))
+                      : ListView.builder(
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return _buildMessageTile(
+                          message['sender'], message['message'], message['sender'] == "Support Agent");
+                    },
                   ),
                 ),
-
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: replyController,
-                        decoration: InputDecoration(
-                          hintText: "Type your response...",
-                          border: OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: Icon(Icons.send, color: Colors.blue),
-                            onPressed: () => _sendReply(replyController.text),
-                          ),
-                        ),
-                      ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: replyController,
+                  decoration: InputDecoration(
+                    hintText: "Type your response...",
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.send, color: Colors.blue),
+                      onPressed: () => _sendReply(ticket['id'], replyController.text),
                     ),
-                  ],
-                ),
-                SizedBox(height: 16),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildActionButton(
-                        "In Progress",
-                        Icons.hourglass_top,
-                        Colors.orange,
-                            () => _updateStatus(ticket["id"], "in-progress")
-                    ),
-                    _buildActionButton(
-                        "Resolve",
-                        Icons.check_circle,
-                        Colors.green,
-                            () => _updateStatus(ticket["id"], "resolved")
-                    ),
-                    _buildActionButton(
-                        "Cancel",
-                        Icons.cancel,
-                        Colors.red,
-                            () => _updateStatus(ticket["id"], "cancelled")
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -141,9 +131,31 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
+  // ✅ Send reply and add it to Firestore
+  Future<void> _sendReply(String ticketId, String message) async {
+    if (message.isEmpty) return;
+
+    try {
+      await _firestore
+          .collection('support')
+          .doc(ticketId)
+          .collection('messages')
+          .add({
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'sender': 'Support Agent',
+      });
+
+      print("✅ Reply sent successfully");
+      Navigator.pop(context); // Close the dialog after sending
+    } catch (e) {
+      print("❌ Error sending reply: $e");
+    }
+  }
+
   Widget _buildMessageTile(String sender, String message, bool isSupport) {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -151,15 +163,15 @@ class _TicketsScreenState extends State<TicketsScreen> {
             backgroundColor: isSupport ? Colors.blue[100] : Colors.grey[200],
             child: Icon(isSupport ? Icons.support_agent : Icons.person, size: 20),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(sender, style: TextStyle(fontWeight: FontWeight.w600)),
-                SizedBox(height: 4),
+                Text(sender, style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
                 Container(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isSupport ? Colors.blue[50] : Colors.grey[100],
                     borderRadius: BorderRadius.circular(8),
@@ -174,82 +186,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  Widget _buildActionButton(String text, IconData icon, Color color, VoidCallback onPressed) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 18),
-      label: Text(text),
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    );
-  }
-
-  void _admitImmediateConcern(Map<String, dynamic> ticket) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            padding: EdgeInsets.all(24),
-            width: MediaQuery.of(context).size.width * 0.5,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Emergency Call",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 24),
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.blue[100],
-                  child: Icon(Icons.emergency, size: 40, color: Colors.red),
-                ),
-                SizedBox(height: 24),
-                Text(
-                  "Connecting to ${ticket['user']}...",
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                ),
-                SizedBox(height: 32),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        _updateStatus(ticket["id"], "finished");
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                      ),
-                      child: Text("Resolve Issue", style: TextStyle(color: Colors.white)),
-                    ),
-                    SizedBox(width: 16),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text("Cancel", style: TextStyle(color: Colors.red)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildTicketSection(String title, String status, {bool isImmediate = false}) {
-    final filteredTickets = tickets.where((t) => t["status"] == status && t["type"] == (isImmediate ? "immediate" : "normal")).toList();
+    final filteredTickets = tickets[isImmediate ? 'immediate' : 'normal'] ?? [];
 
     return Expanded(
       child: Container(
-        margin: EdgeInsets.all(8),
+        margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
@@ -258,7 +200,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
         child: Column(
           children: [
             Padding(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
                   Container(
@@ -269,16 +211,15 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue[800],
                     ),
                   ),
-                  Spacer(),
+                  const Spacer(),
                   Chip(
                     label: Text(filteredTickets.length.toString()),
                     backgroundColor: Colors.grey[200],
@@ -286,37 +227,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 ],
               ),
             ),
-            Divider(height: 1),
+            const Divider(height: 1),
             Expanded(
               child: filteredTickets.isEmpty
-                  ? Center(child: Text("No tickets available", style: TextStyle(color: Colors.grey)))
+                  ? const Center(child: Text("No tickets available"))
                   : ListView.builder(
                 itemCount: filteredTickets.length,
                 itemBuilder: (context, index) {
                   final ticket = filteredTickets[index];
-                  return Container(
-                    margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: Colors.grey[200]!, blurRadius: 2)],
-                    ),
-                    child: ListTile(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                      leading: Icon(
-                        isImmediate ? Icons.warning_amber : Icons.support_agent,
-                        color: isImmediate ? Colors.orange : Colors.blue,
-                      ),
-                      title: Text(ticket["user"], style: TextStyle(fontWeight: FontWeight.w500)),
-                      subtitle: Text(ticket["subject"], overflow: TextOverflow.ellipsis),
-                      trailing: isImmediate && ticket["status"] == "queue"
-                          ? IconButton(
-                        icon: Icon(Icons.emergency, color: Colors.red),
-                        onPressed: () => _admitImmediateConcern(ticket),
-                      )
-                          : null,
-                      onTap: !isImmediate ? () => _viewTicketDetails(ticket) : null,
-                    ),
+                  return ListTile(
+                    title: Text(ticket['user']),
+                    subtitle: Text(ticket['subject']),
+                    onTap: () => _viewTicketDetails(ticket),
                   );
                 },
               ),
@@ -327,20 +249,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  void _sendReply(String message) {
-    // Implement reply sending logic
-    print("Reply sent: $message");
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Support Tickets Management'),
+        title: const Text('Support Tickets Management'),
         backgroundColor: Colors.blue[800],
         elevation: 0,
       ),
-      body: Column(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           Expanded(
             child: Row(
@@ -364,5 +283,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
         ],
       ),
     );
+  }
+}
+
+Color _getStatusColor(String status) {
+  switch (status) {
+    case 'pending': return Colors.orange;
+    case 'in-progress': return Colors.blue;
+    case 'resolved': return Colors.green;
+    case 'cancelled': return Colors.red;
+    case 'queue': return Colors.purple;
+    case 'ongoing': return Colors.blueAccent;
+    case 'finished': return Colors.teal;
+    default: return Colors.grey;
   }
 }

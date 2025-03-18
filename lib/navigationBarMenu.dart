@@ -1,10 +1,67 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
 
-class NavigationBarMenuScreen extends StatelessWidget {
+class NavigationBarMenuScreen extends StatefulWidget {
   final Widget child; // Accepts child for ShellRoute navigation
   const NavigationBarMenuScreen({super.key, required this.child});
+
+  @override
+  _NavigationBarMenuScreenState createState() => _NavigationBarMenuScreenState();
+}
+
+class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
+  String? userRole;
+  bool canAccessHome = false;
+  bool isUser = false;
+  bool isSpecialist = false;
+  bool isLoading = true; // ✅ Loading state to prevent flashing 'Access Denied'
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserRole();
+  }
+
+  // ✅ Fetch User Role from Firestore
+  Future<void> _fetchUserRole() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid != null) {
+      final adminDoc = await _firestore.collection('admins').doc(uid).get();
+      if (adminDoc.exists) {
+        final role = adminDoc.data()?['role'] ?? 'User';
+
+        setState(() {
+          userRole = role;
+          canAccessHome = role == 'Super Admin' || role == 'Admin';
+          isSpecialist = role == 'Specialist';
+          isLoading = false; // ✅ Stop loading once data is fetched
+
+          // ✅ Auto-redirect Specialist to 'Test' page
+          if (isSpecialist) {
+            Future.delayed(Duration.zero, () => context.go('/navigation/test'));
+          }
+        });
+      } else {
+        print("❌ No role found for UID: $uid");
+        setState(() {
+          userRole = 'User'; // Default if no role is found
+          isLoading = false; // ✅ Stop loading
+        });
+      }
+    } else {
+      print("❌ No authenticated user found.");
+      setState(() {
+        userRole = 'User'; // Default role for safety
+        isLoading = false; // ✅ Stop loading
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +90,7 @@ class NavigationBarMenuScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: MyColors.white,
         appBar: AppBar(
-          title: const Text('Admin Panel',style: TextStyle(color: Colors.white),),
+          title: const Text('Admin Panel', style: TextStyle(color: Colors.white)),
           backgroundColor: MyColors.color1,
           elevation: 3,
         ),
@@ -72,17 +129,7 @@ class NavigationBarMenuScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     Expanded(
                       child: ListView(
-                        children: [
-                          _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
-                          _buildSidebarItem(context, Icons.people, 'User Management', '/navigation/user-management'),
-                          _buildSidebarItem(context, Icons.article, 'Contents', '/navigation/contents'),
-                          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
-                          _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
-                          _buildSidebarItem(context, Icons.video_camera_front, 'Test', '/navigation/test'),
-                          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
-                          _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
-                          _buildLogoutItem(context),
-                        ],
+                        children: _buildSidebarItems(context),
                       ),
                     ),
                   ],
@@ -90,15 +137,68 @@ class NavigationBarMenuScreen extends StatelessWidget {
               ),
             ),
 
-            // Main Content
-            Expanded(flex: 8, child: child),
+            // Main Content — Show Loading, Content, or Restricted Access
+            Expanded(
+              flex: 8,
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator()) // ✅ Loading indicator
+                  : (userRole == 'Super Admin' || userRole == 'Admin' || isSpecialist)
+                  ? widget.child // ✅ Show content for Admin/Super Admin/Specialist
+                  : _restrictedAccessWidget(), // ❌ Restricted view for unknown roles
+            ),
           ],
         ),
       ),
     );
   }
 
-  /// Sidebar Item with Icons & Improved Styling
+  /// Dynamic Sidebar Items Based on Role
+  List<Widget> _buildSidebarItems(BuildContext context) {
+    switch (userRole) {
+      case 'Super Admin':
+        return [
+          _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
+          _buildSidebarItem(context, Icons.people, 'User Management', '/navigation/user-management'),
+          _buildSidebarItem(context, Icons.article, 'Contents', '/navigation/contents'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Test', '/navigation/test'),
+          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
+          _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
+          _buildLogoutItem(context),
+        ];
+      case 'Admin':
+        return [
+          _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
+          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
+          _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
+          _buildLogoutItem(context),
+        ];
+      case 'Specialist':
+        return [
+          _buildSidebarItem(context, Icons.video_camera_front, 'Test', '/navigation/test'),
+          _buildLogoutItem(context),
+        ];
+      default: // For 'User'
+        return [
+          _buildLogoutItem(context),
+        ];
+    }
+  }
+
+  /// Restricted Access Widget
+  Widget _restrictedAccessWidget() {
+    return const Center(
+      child: Text(
+        "❌ Access Denied: You don't have permission to view this content.",
+        style: TextStyle(fontSize: 18, color: Colors.red),
+      ),
+    );
+  }
+
+  /// Sidebar Item
   Widget _buildSidebarItem(BuildContext context, IconData icon, String title, String route) {
     final currentRoute = GoRouter.of(context).routeInformationProvider.value.uri.toString();
     final bool isSelected = currentRoute == route;
@@ -110,11 +210,7 @@ class NavigationBarMenuScreen extends StatelessWidget {
         curve: Curves.easeInOut,
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-        decoration: BoxDecoration(
-          color: isSelected ? MyColors.color1.withOpacity(0.15) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: isSelected ? Border.all(color: MyColors.color1, width: 2) : null,
-        ),
+        color: isSelected ? MyColors.color1.withOpacity(0.15) : Colors.white,
         child: Row(
           children: [
             Icon(icon, color: isSelected ? MyColors.color1 : Colors.grey),
@@ -124,7 +220,6 @@ class NavigationBarMenuScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 color: isSelected ? MyColors.color1 : Colors.grey[800],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ],
@@ -133,30 +228,22 @@ class NavigationBarMenuScreen extends StatelessWidget {
     );
   }
 
-  /// Logout Button with a More Professional Look
+  /// Logout Button
   Widget _buildLogoutItem(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.go('/login'),
+      onTap: () async {
+        await FirebaseAuth.instance.signOut();
+        context.go('/login');
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.red[50],
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.red, width: 2),
-        ),
+        color: Colors.red[50],
         child: Row(
           children: const [
             Icon(Icons.logout, color: Colors.red),
             SizedBox(width: 10),
-            Text(
-              'Logout',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text('Logout', style: TextStyle(fontSize: 16, color: Colors.red)),
           ],
         ),
       ),

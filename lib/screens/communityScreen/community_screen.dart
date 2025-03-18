@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -6,53 +7,22 @@ class CommunityScreen extends StatefulWidget {
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
-  List<Map<String, dynamic>> posts = [
-    {
-      "id": "1",
-      "user": "John Doe",
-      "content": "Loving this app! ❤️",
-      "likes": ["Alice", "Bob", "Charlie"],
-      "comments": [
-        {"user": "Alice", "comment": "Great post!"},
-        {"user": "Bob", "comment": "I agree, this app is awesome!"},
-      ],
-      "status": "approved",
-    },
-    {
-      "id": "2",
-      "user": "Jane Smith",
-      "content": "New features are amazing! 🚀",
-      "likes": ["Daniel", "Eve"],
-      "comments": [
-        {"user": "Daniel", "comment": "Loving the update!"},
-      ],
-      "status": "approved",
-    },
-    {
-      "id": "3",
-      "user": "Alice Brown",
-      "content": "Feature request: Dark mode! 🌙",
-      "status": "pending",
-    },
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  void _updatePostStatus(String postId, String newStatus) {
-    setState(() {
-      posts.firstWhere((post) => post["id"] == postId)["status"] = newStatus;
+  void _updatePostStatus(String postId, String newStatus) async {
+    await _firestore.collection('safeSpace/posts/userPosts').doc(postId).update({
+      "status": newStatus,
     });
   }
 
-  void _deletePost(String postId) {
-    setState(() {
-      posts.removeWhere((post) => post["id"] == postId);
-    });
+  void _deletePost(String postId) async {
+    await _firestore.collection('safeSpace/posts/userPosts').doc(postId).delete();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-          title: Text('Community Management'), backgroundColor: Colors.blue),
+      appBar: AppBar(title: Text('Community Management'), backgroundColor: Colors.blue),
       body: Column(
         children: [
           Expanded(
@@ -69,107 +39,116 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _buildPostSection(String title, String status) {
-    List<Map<String, dynamic>> filteredPosts = posts.where((
-        post) => post["status"] == status).toList();
-
     return Expanded(
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(title, style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
-          ),
-          Expanded(
-            child: filteredPosts.isEmpty
-                ? Center(child: Text("No posts"))
-                : ListView.builder(
-              itemCount: filteredPosts.length,
-              itemBuilder: (context, index) {
-                var post = filteredPosts[index];
-                return Card(
-                  margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                  child: ListTile(
-                    title: Text(post["user"]),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(post["content"]),
-                        if (status == "approved")
-                          Row(
-                            children: [
-                              TextButton(
-                                onPressed: () =>
-                                    _showLikesDialog(post["likes"]),
-                                child: Text("👍 ${post["likes"].length} Likes"),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: _firestore
+            .collection('safeSpace/posts/userPosts')
+            .where("status", isEqualTo: status)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No posts"));
+          }
+
+          var filteredPosts = snapshot.data!.docs;
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(title, style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: filteredPosts.length,
+                  itemBuilder: (context, index) {
+                    var post = filteredPosts[index].data() as Map<String, dynamic>;
+                    var postId = filteredPosts[index].id;
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                      child: ListTile(
+                        title: Text(post["userId"]),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(post["content"]),
+                            if (status == "approved")
+                              Row(
+                                children: [
+                                  TextButton(
+                                    onPressed: () => _showLikesDialog(post["likes"]),
+                                    child: Text("👍 ${post["likes"]?.length ?? 0} Likes"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => _showCommentsDialog(
+                                        post["comments"] ?? [], postId),
+                                    child: Text("💬 ${post["comments"]?.length ?? 0} Comments"),
+                                  ),
+                                ],
                               ),
-                              TextButton(
-                                onPressed: () => _showCommentsDialog(
-                                    post["comments"], post["id"]),
-                                child: Text(
-                                    "💬 ${post["comments"].length} Comments"),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                    onTap: () {
-                      if (status == "pending") {
-                        _showPendingReviewDialog(post);
-                      } else {
-                        _showDeletePostDialog(post["id"]);
-                      }
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+                          ],
+                        ),
+                        onTap: () {
+                          if (status == "pending") {
+                            _showPendingReviewDialog(post, postId);
+                          } else {
+                            _showDeletePostDialog(postId);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  void _showPendingReviewDialog(Map<String, dynamic> post) {
+  void _showPendingReviewDialog(Map<String, dynamic> post, String postId) {
     showDialog(
       context: context,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             width: 400,
             height: 250,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Review Post", style: TextStyle(fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue)),
-                SizedBox(height: 12),
-                Text(post["content"], style: TextStyle(fontSize: 16)),
-                SizedBox(height: 20),
+                const Text("Review Post",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue)),
+                const SizedBox(height: 12),
+                Text(post["content"], style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     ElevatedButton(
                       onPressed: () {
-                        _updatePostStatus(post["id"], "approved");
+                        _updatePostStatus(postId, "approved");
                         Navigator.pop(context);
                       },
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green),
-                      child: Text("Approve"),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      child: const Text("Approve"),
                     ),
                     ElevatedButton(
                       onPressed: () {
-                        _updatePostStatus(post["id"], "rejected");
+                        _updatePostStatus(postId, "rejected");
                         Navigator.pop(context);
                       },
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red),
-                      child: Text("Reject"),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text("Reject"),
                     ),
                   ],
                 ),
@@ -186,21 +165,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
       context: context,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             width: 300,
             height: 180,
             child: Column(
               children: [
-                Text("Delete Post?", style: TextStyle(fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red)),
-                SizedBox(height: 16),
-                Text("Are you sure you want to delete this post?",
-                    textAlign: TextAlign.center),
-                SizedBox(height: 20),
+                const Text("Delete Post?",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                const SizedBox(height: 16),
+                const Text("Are you sure you want to delete this post?", textAlign: TextAlign.center),
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -209,15 +185,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         _deletePost(postId);
                         Navigator.pop(context);
                       },
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red),
-                      child: Text("Delete"),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text("Delete"),
                     ),
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey),
-                      child: Text("Cancel"),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                      child: const Text("Cancel"),
                     ),
                   ],
                 ),
@@ -229,37 +203,40 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  void _showLikesDialog(List<String> likes) {
+  void _showLikesDialog(dynamic likesData) {
+    List<String> likes = (likesData as List<dynamic>)
+        .map((like) => like.toString())  // ✅ Convert to List<String>
+        .toList();
+
     showDialog(
       context: context,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             width: 300,
             height: likes.isNotEmpty ? 300 : 150,
             child: Column(
               children: [
-                Text("Liked by", style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
-                SizedBox(height: 10),
+                const Text("Liked by", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
                 Expanded(
                   child: likes.isNotEmpty
                       ? ListView.builder(
                     itemCount: likes.length,
-                    itemBuilder: (context, index) =>
-                        ListTile(
-                          leading: Icon(Icons.person, color: Colors.blue),
-                          title: Text(likes[index]),
-                        ),
+                    itemBuilder: (context, index) => ListTile(
+                      leading: const Icon(Icons.person, color: Colors.blue),
+                      title: Text(likes[index]),
+                    ),
                   )
-                      : Center(child: Text("No likes yet")),
+                      : const Center(child: Text("No likes yet")),
                 ),
-                SizedBox(height: 10),
-                ElevatedButton(onPressed: () => Navigator.pop(context),
-                    child: Text("Close")),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Close"),
+                ),
               ],
             ),
           ),
@@ -268,24 +245,26 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  void _showCommentsDialog(List<Map<String, String>> comments, String postId) {
+  void _showCommentsDialog(dynamic commentsData, String postId) {
+    List<Map<String, dynamic>> comments = (commentsData as List<dynamic>)
+        .map((comment) => Map<String, dynamic>.from(comment))
+        .toList();
+
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Container(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 width: 400,
                 height: 400,
                 child: Column(
                   children: [
-                    Text("Comments", style: TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
+                    const Text("Comments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
                     Expanded(
                       child: comments.isNotEmpty
                           ? ListView.builder(
@@ -293,30 +272,32 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         itemBuilder: (context, index) {
                           var comment = comments[index];
                           return ListTile(
-                            leading: Icon(Icons.person, color: Colors.blue),
-                            title: Text(comment["user"]!),
-                            subtitle: Text(comment["comment"]!),
+                            leading: const Icon(Icons.person, color: Colors.blue),
+                            title: Text(comment["user"] ?? "Unknown User"),
+                            subtitle: Text(comment["comment"] ?? "No Comment"),
                             trailing: IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
+                              icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () {
                                 setState(() {
                                   comments.removeAt(index);
                                 });
-                                // Update the main post list
-                                setState(() {
-                                  posts.firstWhere((post) =>
-                                  post["id"] == postId)["comments"] = comments;
+
+                                // ✅ Update comments in Firestore
+                                _firestore.collection('safeSpace/posts/userPosts').doc(postId).update({
+                                  "comments": comments,
                                 });
                               },
                             ),
                           );
                         },
                       )
-                          : Center(child: Text("No comments yet")),
+                          : const Center(child: Text("No comments yet")),
                     ),
-                    SizedBox(height: 10),
-                    ElevatedButton(onPressed: () => Navigator.pop(context),
-                        child: Text("Close")),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Close"),
+                    ),
                   ],
                 ),
               ),
@@ -326,4 +307,5 @@ class _CommunityScreenState extends State<CommunityScreen> {
       },
     );
   }
+
 }
