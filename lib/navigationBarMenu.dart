@@ -161,6 +161,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.people, 'User Management', '/navigation/user-management'),
           _buildSidebarItem(context, Icons.article, 'Contents', '/navigation/contents'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Test', '/navigation/test'),
           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
@@ -172,6 +173,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
           _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
           _buildLogoutItem(context),
@@ -179,6 +181,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       case 'Specialist':
         return [
           _buildSidebarItem(context, Icons.video_camera_front, 'Test', '/navigation/test'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
           _buildLogoutItem(context),
         ];
       default: // For 'User'

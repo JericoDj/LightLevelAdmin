@@ -158,29 +158,31 @@ class _SessionsScreenState extends State<SessionsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Sessions Management')),
-      body: Column(
-        children: [
-          const SizedBox(height: 12),
-          const Text("Chat Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          Row(
-            children: [
-              _buildConsultationSection("Queue", "queue", "Chat", Colors.blueAccent),
-              _buildConsultationSection("Ongoing", "ongoing", "Chat", Colors.green),
-              _buildConsultationSection("Finished", "finished", "Chat", Colors.orange),
-              _buildConsultationSection("Cancelled", "cancelled", "Chat", Colors.red),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Text("Talk Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          Row(
-            children: [
-              _buildConsultationSection("Queue", "queue", "Talk", Colors.blueAccent),
-              _buildConsultationSection("Ongoing", "ongoing", "Talk", Colors.green),
-              _buildConsultationSection("Finished", "finished", "Talk", Colors.orange),
-              _buildConsultationSection("Cancelled", "cancelled", "Talk", Colors.red),
-            ],
-          ),
-        ],
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            const Text("Chat Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                _buildConsultationSection("Queue", "queue", "Chat", Colors.blueAccent),
+                _buildConsultationSection("Ongoing", "ongoing", "Chat", Colors.green),
+                _buildConsultationSection("Finished", "finished", "Chat", Colors.orange),
+                _buildConsultationSection("Cancelled", "cancelled", "Chat", Colors.red),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text("Talk Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                _buildConsultationSection("Queue", "queue", "Talk", Colors.blueAccent),
+                _buildConsultationSection("Ongoing", "ongoing", "Talk", Colors.green),
+                _buildConsultationSection("Finished", "finished", "Talk", Colors.orange),
+                _buildConsultationSection("Cancelled", "cancelled", "Talk", Colors.red),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

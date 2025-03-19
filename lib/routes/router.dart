@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lightlevelpsychosolutionsadmin/screens/bookingsScreen/bookingsScreen.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/forgotPasswordScreen/forgotPasswordScreen.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/signupscreen/signupscreen.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/test/test/test.dart';
@@ -80,6 +81,7 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/navigation/contents', builder: (context, state) => ContentsScreen()),
         GoRoute(path: '/navigation/sessions', builder: (context, state) => SessionsScreen()),
         GoRoute(path: '/navigation/support', builder: (context, state) => SupportScreen()),
+        GoRoute(path: '/navigation/bookings', builder: (context, state) => BookingsScreen()),
         GoRoute(path: '/navigation/test', builder: (context, state) => TestApp()),
         GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
         GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
