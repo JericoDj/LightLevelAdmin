@@ -29,7 +29,9 @@ class AuthRepository extends GetxController {
         DocumentSnapshot adminDoc =
         await _firestore.collection("admins").doc(user.uid).get();
 
+
         if (adminDoc.exists) {
+
           UserStorage.saveUser(
             uid: user.uid,
             email: email,

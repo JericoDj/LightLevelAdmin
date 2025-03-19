@@ -9,70 +9,9 @@ class TicketsScreen extends StatefulWidget {
 class _TicketsScreenState extends State<TicketsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Map<String, List<Map<String, dynamic>>> tickets = {};
-  bool isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchTickets();
-  }
-
-  // ✅ Fetch tickets from Firestore
-  Future<void> _fetchTickets() async {
-    try {
-      final snapshot = await _firestore.collectionGroup('tickets').get();
-
-      final fetchedTickets = <String, List<Map<String, dynamic>>>{};
-
-      for (var doc in snapshot.docs) {
-        final ticket = doc.data();
-        final ticketType = ticket['type'] ?? 'normal';
-
-        if (!fetchedTickets.containsKey(ticketType)) {
-          fetchedTickets[ticketType] = [];
-        }
-
-        fetchedTickets[ticketType]?.add({
-          "id": ticket['ticketId'],
-          "user": ticket['userId'],
-          "subject": ticket['title'],
-          "status": ticket['status'],
-          "created_at": ticket['created_at'],
-          "type": ticketType,
-        });
-      }
-
-      setState(() {
-        tickets = fetchedTickets;
-        isLoading = false;
-      });
-
-    } catch (e) {
-      print("❌ Error fetching tickets: $e");
-      setState(() => isLoading = false);
-    }
-  }
-
-  // ✅ Fetch Messages for a specific ticket
-  Future<List<Map<String, dynamic>>> _fetchMessages(String ticketId) async {
-    try {
-      final snapshot = await _firestore
-          .collectionGroup('messages')
-          .where('ticketId', isEqualTo: ticketId)
-          .get();
-
-      return snapshot.docs.map((doc) => doc.data()).toList();
-    } catch (e) {
-      print("❌ Error fetching messages: $e");
-      return [];
-    }
-  }
-
-  void _viewTicketDetails(Map<String, dynamic> ticket) async {
-    final messages = await _fetchMessages(ticket['id']);
-
+  void _viewTicketDetails(Map<String, dynamic> ticket) {
     TextEditingController replyController = TextEditingController();
+    String currentStatus = ticket['status'] ?? 'Open';
 
     showDialog(
       context: context,
@@ -85,44 +24,149 @@ class _TicketsScreenState extends State<TicketsScreen> {
             width: MediaQuery.of(context).size.width * 0.7,
             height: MediaQuery.of(context).size.height * 0.8,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Ticket #${ticket['id']}",
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    )),
-                const SizedBox(height: 8),
-                Text(ticket['subject'],
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    )),
-                const Divider(thickness: 1.5),
-                Expanded(
-                  child: messages.isEmpty
-                      ? const Center(child: Text("No messages yet"))
-                      : ListView.builder(
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final message = messages[index];
-                      return _buildMessageTile(
-                          message['sender'], message['message'], message['sender'] == "Support Agent");
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+            Text("Ticket ID: ${ticket['ticketId']}",
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                )),
+            const SizedBox(height: 8),
+            Text("Title: ${ticket['title']}",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                )),
+            const SizedBox(height: 8),
+            Text("User ID: ${ticket['userId']}",
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                )),
+            Text("Last Updated: ${_formatTimestamp(ticket['lastUpdated'])}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                )),
+              const SizedBox(height: 8),
+
+              // Status Dropdown
+              Row(
+                children: [
+                  const Text("Status: "),
+                  const SizedBox(width: 8),
+                  DropdownButton<String>(
+                    value: currentStatus,
+                    icon: const Icon(Icons.arrow_drop_down),
+                    items: ['Open', 'In Progress', 'Resolved', 'Closed']
+                        .map((status) => DropdownMenuItem(
+                      value: status,
+                      child: Text(status),
+                    ))
+                        .toList(),
+                    onChanged: (newStatus) {
+                      if (newStatus != null) {
+                        _updateTicketStatus(
+                            ticket['ticketId'], ticket['userId'], newStatus);
+                        Navigator.pop(context);
+                      }
                     },
                   ),
+                ],
+              ),
+
+              const Divider(thickness: 1.5),
+
+              // Messages Stream
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _firestore
+                      .collection('support')
+                      .doc(ticket['userId'])
+                      .collection('tickets')
+                      .doc(ticket['ticketId'])
+                      .collection('messages')
+                      .orderBy('timestamp', descending: false)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(child: Text("No messages yet"));
+                    }
+
+                    return ListView.builder(
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) {
+                        final data = snapshot.data!.docs[index].data()
+                        as Map<String, dynamic>;
+                        final isSupportAgent = data['sender'] == 'Support Agent';
+
+                        return Align(
+                          alignment: isSupportAgent
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 6, horizontal: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSupportAgent
+                                  ? Colors.blue[200]
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(12),
+                                topRight: const Radius.circular(12),
+                                bottomLeft: isSupportAgent
+                                    ? const Radius.circular(12)
+                                    : const Radius.circular(0),
+                                bottomRight: isSupportAgent
+                                    ? const Radius.circular(0)
+                                    : const Radius.circular(12),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data['message'] ?? 'No content',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  data['timestamp'] != null
+                                      ? _formatTimestamp(data['timestamp'])
+                                      : '',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: replyController,
-                  decoration: InputDecoration(
-                    hintText: "Type your response...",
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.blue),
-                      onPressed: () => _sendReply(ticket['id'], replyController.text),
-                    ),
+              ),
+
+              const SizedBox(height: 16),
+              TextField(
+                controller: replyController,
+                decoration: InputDecoration(
+                  hintText: "Type your response...",
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.blue),
+                    onPressed: () => _sendReply(
+                        ticket['ticketId'], ticket['userId'], replyController.text),
                   ),
                 ),
+              ),
               ],
             ),
           ),
@@ -131,13 +175,20 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  // ✅ Send reply and add it to Firestore
-  Future<void> _sendReply(String ticketId, String message) async {
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return 'N/A';
+    final date = (timestamp as Timestamp).toDate();
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _sendReply(String ticketId, String userId, String message) async {
     if (message.isEmpty) return;
 
     try {
       await _firestore
           .collection('support')
+          .doc(userId)
+          .collection('tickets')
           .doc(ticketId)
           .collection('messages')
           .add({
@@ -146,99 +197,132 @@ class _TicketsScreenState extends State<TicketsScreen> {
         'sender': 'Support Agent',
       });
 
-      print("✅ Reply sent successfully");
-      Navigator.pop(context); // Close the dialog after sending
+      // Update lastUpdated when sending reply
+      await _firestore
+          .collection('support')
+          .doc(userId)
+          .collection('tickets')
+          .doc(ticketId)
+          .update({'lastUpdated': FieldValue.serverTimestamp()});
+
+      if (mounted) setState(() {});
+      if (Navigator.canPop(context)) Navigator.pop(context);
     } catch (e) {
       print("❌ Error sending reply: $e");
     }
   }
 
-  Widget _buildMessageTile(String sender, String message, bool isSupport) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            backgroundColor: isSupport ? Colors.blue[100] : Colors.grey[200],
-            child: Icon(isSupport ? Icons.support_agent : Icons.person, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(sender, style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isSupport ? Colors.blue[50] : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(message),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _updateTicketStatus(String ticketId, String userId, String newStatus) async {
+    try {
+      await _firestore
+          .collection('support')
+          .doc(userId)
+          .collection('tickets')
+          .doc(ticketId)
+          .update({
+        'status': newStatus,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("❌ Error updating status: $e");
+    }
   }
 
-  Widget _buildTicketSection(String title, String status, {bool isImmediate = false}) {
-    final filteredTickets = tickets[isImmediate ? 'immediate' : 'normal'] ?? [];
-
+  Widget _buildTicketColumn(String status, List<Map<String, dynamic>> tickets) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
+          border: Border.all(color: Colors.grey[300]!),
         ),
         child: Column(
           children: [
-            Padding(
+            Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(status),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
-                  Chip(
-                    label: Text(filteredTickets.length.toString()),
-                    backgroundColor: Colors.grey[200],
-                  ),
-                ],
+              color: _getStatusColor(status),
+              child: Text(
+                status.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
-            const Divider(height: 1),
             Expanded(
-              child: filteredTickets.isEmpty
+              child: tickets.isEmpty
                   ? const Center(child: Text("No tickets available"))
                   : ListView.builder(
-                itemCount: filteredTickets.length,
+                itemCount: tickets.length,
                 itemBuilder: (context, index) {
-                  final ticket = filteredTickets[index];
-                  return ListTile(
-                    title: Text(ticket['user']),
-                    subtitle: Text(ticket['subject']),
-                    onTap: () => _viewTicketDetails(ticket),
+                  final ticket = tickets[index];
+                  return Card(
+                    elevation: 3,
+                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(12),
+                      title: Text(
+                        ticket['title'] ?? 'No Title',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(ticket['status']),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  ticket['status'] ?? 'N/A',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Concern: ${ticket['concern'] ?? 'N/A'}',
+                                  style: TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'User ID: ${ticket['userId'] ?? 'N/A'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                          Text(
+                            'Updated: ${_formatTimestamp(ticket['lastUpdated'])}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey[600]),
+                      onTap: () => _viewTicketDetails(ticket),
+                    ),
                   );
                 },
               ),
@@ -257,44 +341,72 @@ class _TicketsScreenState extends State<TicketsScreen> {
         backgroundColor: Colors.blue[800],
         elevation: 0,
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                _buildTicketSection("Pending", "pending"),
-                _buildTicketSection("In Progress", "in-progress"),
-                _buildTicketSection("Resolved", "resolved"),
-                _buildTicketSection("Cancelled", "cancelled"),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Row(
-              children: [
-                _buildTicketSection("Emergency Queue", "queue", isImmediate: true),
-                _buildTicketSection("Active Emergency", "ongoing", isImmediate: true),
-                _buildTicketSection("Resolved Emergency", "finished", isImmediate: true),
-              ],
-            ),
-          ),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore.collectionGroup('tickets').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No tickets available"));
+          }
+
+          // ✅ Collect and sort tickets
+          final sortedTickets = _sortTickets(snapshot.data!.docs);
+
+          // Group tickets by status
+          final ticketsByStatus = {
+            'Open': <Map<String, dynamic>>[],
+            'In Progress': <Map<String, dynamic>>[],
+            'Resolved': <Map<String, dynamic>>[],
+            'Closed': <Map<String, dynamic>>[],
+          };
+
+          for (var ticket in sortedTickets) {
+            final status = ticket['status']?.toString() ?? 'Open';
+            ticketsByStatus[status]?.add(ticket);
+          }
+
+          return Row(
+            children: [
+              _buildTicketColumn('Open', ticketsByStatus['Open']!),
+              _buildTicketColumn('In Progress', ticketsByStatus['In Progress']!),
+              _buildTicketColumn('Resolved', ticketsByStatus['Resolved']!),
+              _buildTicketColumn('Closed', ticketsByStatus['Closed']!),
+            ],
+          );
+        },
       ),
     );
   }
-}
 
-Color _getStatusColor(String status) {
-  switch (status) {
-    case 'pending': return Colors.orange;
-    case 'in-progress': return Colors.blue;
+// ✅ Sorting Function for Better Control
+  List<Map<String, dynamic>> _sortTickets(List<QueryDocumentSnapshot> docs) {
+    final sortedTickets = docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+
+    sortedTickets.sort((a, b) {
+      final aTime = a['lastUpdated'] is Timestamp
+          ? (a['lastUpdated'] as Timestamp).toDate()
+          : DateTime(2000); // Default fallback
+      final bTime = b['lastUpdated'] is Timestamp
+          ? (b['lastUpdated'] as Timestamp).toDate()
+          : DateTime(2000); // Default fallback
+
+      return bTime.compareTo(aTime); // ✅ Latest first
+    });
+
+    return sortedTickets;
+  }
+
+
+}
+  Color _getStatusColor(String? status) {
+  switch (status?.toLowerCase()) {
+    case 'open': return Colors.orange;
+    case 'in progress': return Colors.blue;
     case 'resolved': return Colors.green;
-    case 'cancelled': return Colors.red;
-    case 'queue': return Colors.purple;
-    case 'ongoing': return Colors.blueAccent;
-    case 'finished': return Colors.teal;
+    case 'closed': return Colors.red;
     default: return Colors.grey;
   }
 }

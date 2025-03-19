@@ -17,7 +17,7 @@ import '../screens/userManagementScreen/user_management_screen.dart';
 import '../navigationBarMenu.dart';
 
 final GoRouter router = GoRouter(
-  initialLocation: '/navigation/home',
+  initialLocation: '/login',
   routes: [
     // ✅ Login Routes
     GoRoute(
