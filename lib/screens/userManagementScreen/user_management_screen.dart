@@ -13,10 +13,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
 
-  void _showCompanyDialog({String? companyId, String? existingName, String? existingRole}) {
-    TextEditingController companyNameController = TextEditingController(text: existingName);
-    TextEditingController companyIdController = TextEditingController(text: companyId);
+  void _showCompanyDialog(
+      {String? companyId, String? existingName, String? existingRole, bool? existingSafeAccess}) {
+    TextEditingController companyNameController = TextEditingController(
+        text: existingName);
+    TextEditingController companyIdController = TextEditingController(
+        text: companyId);
     String selectedRole = existingRole ?? "User"; // Default role
+    bool safeCommunityAccess = existingSafeAccess ?? false; // Default to false
 
     showDialog(
       context: context,
@@ -42,10 +46,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   DropdownButtonFormField<String>(
                     value: selectedRole,
                     items: ["Specialist", "Admin", "Super Admin", "User"]
-                        .map((role) => DropdownMenuItem(
-                      value: role,
-                      child: Text(role),
-                    ))
+                        .map((role) =>
+                        DropdownMenuItem(
+                          value: role,
+                          child: Text(role),
+                        ))
                         .toList(),
                     onChanged: (value) {
                       if (value != null) {
@@ -54,10 +59,28 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     },
                     decoration: InputDecoration(labelText: "Company Role"),
                   ),
+                  const SizedBox(height: 10),
+                  // Show Safe Community Access switch ONLY for "User" role
+                  if (selectedRole == "User")
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Safe Community Access"),
+                        Switch(
+                          value: safeCommunityAccess,
+                          onChanged: (value) {
+                            setState(() {
+                              safeCommunityAccess = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+                TextButton(onPressed: () => Navigator.pop(context),
+                    child: const Text("Cancel")),
                 ElevatedButton(
                   onPressed: () async {
                     String newCompanyId = companyIdController.text.trim();
@@ -73,13 +96,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       return;
                     }
 
-                    var existingCompany = await _firestore.collection("companies").doc(newCompanyId).get();
+                    var existingCompany = await _firestore.collection(
+                        "companies").doc(newCompanyId).get();
 
                     if (!existingCompany.exists || companyId != null) {
-                      await _firestore.collection("companies").doc(newCompanyId).set({
+                      await _firestore.collection("companies")
+                          .doc(newCompanyId)
+                          .set({
                         "companyId": newCompanyId,
                         "name": companyName,
-                        "role": selectedRole, // Add role to Firestore
+                        "role": selectedRole,
+                        // Add role to Firestore
+                        if (selectedRole ==
+                            "User") "safeCommunityAccess": safeCommunityAccess,
+                        // Only save if User
                       });
 
                       Navigator.pop(context);
@@ -109,6 +139,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
+
   void _deleteCompany(String companyId) async {
     await _firestore.collection("companies").doc(companyId).delete();
   }
@@ -118,10 +149,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.7,
-            height: MediaQuery.of(context).size.height * 0.7,
+            width: MediaQuery
+                .of(context)
+                .size
+                .width * 0.7,
+            height: MediaQuery
+                .of(context)
+                .size
+                .height * 0.7,
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,18 +170,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   children: [
                     Text(
                       "$companyName - Users",
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 20),
+                      style: TextStyle(fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                          fontSize: 20),
                     ),
-                    IconButton(icon: Icon(Icons.close, color: Colors.red), onPressed: () => Navigator.pop(context)),
+                    IconButton(icon: Icon(Icons.close, color: Colors.red),
+                        onPressed: () => Navigator.pop(context)),
                   ],
                 ),
                 const SizedBox(height: 16),
 
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _firestore.collection("companies").doc(companyId).collection("users").snapshots(),
+                    stream: _firestore.collection("companies")
+                        .doc(companyId)
+                        .collection("users")
+                        .snapshots(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                      if (!snapshot.hasData)
+                        return Center(child: CircularProgressIndicator());
                       var users = snapshot.data!.docs;
                       return ListView.builder(
                         itemCount: users.length,
@@ -158,9 +203,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: Icon(user["isActive"] ? Icons.check_circle : Icons.cancel, color: Colors.green),
+                                    icon: Icon(user["isActive"]
+                                        ? Icons.check_circle
+                                        : Icons.cancel, color: Colors.green),
                                     onPressed: () {
-                                      _firestore.collection("companies").doc(companyId).collection("users").doc(user.id).update({
+                                      _firestore.collection("companies").doc(
+                                          companyId).collection("users").doc(
+                                          user.id).update({
                                         "isActive": !user["isActive"],
                                       });
                                     },
@@ -168,7 +217,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   IconButton(
                                     icon: Icon(Icons.delete, color: Colors.red),
                                     onPressed: () {
-                                      _firestore.collection("companies").doc(companyId).collection("users").doc(user.id).delete();
+                                      _firestore.collection("companies").doc(
+                                          companyId).collection("users").doc(
+                                          user.id).delete();
                                     },
                                   ),
                                 ],
@@ -180,6 +231,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     },
                   ),
                 ),
+
 
                 // **Footer**
                 ElevatedButton.icon(
@@ -208,19 +260,27 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: nameController, decoration: InputDecoration(labelText: "Full Name")),
-              TextField(controller: emailController, decoration: InputDecoration(labelText: "Email")),
+              TextField(controller: nameController,
+                  decoration: InputDecoration(labelText: "Full Name")),
+              TextField(controller: emailController,
+                  decoration: InputDecoration(labelText: "Email")),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+            TextButton(
+                onPressed: () => Navigator.pop(context), child: Text("Cancel")),
             ElevatedButton(
               onPressed: () async {
-                if (nameController.text.isNotEmpty && emailController.text.isNotEmpty) {
-                  var existingUser = await _firestore.collection("users").where("email", isEqualTo: emailController.text).get();
+                if (nameController.text.isNotEmpty &&
+                    emailController.text.isNotEmpty) {
+                  var existingUser = await _firestore.collection("users").where(
+                      "email", isEqualTo: emailController.text).get();
                   bool hasAccount = existingUser.docs.isNotEmpty;
 
-                  await _firestore.collection("companies").doc(companyId).collection("users").add({
+                  await _firestore.collection("companies")
+                      .doc(companyId)
+                      .collection("users")
+                      .add({
                     "name": nameController.text,
                     "email": emailController.text,
                     "isActive": true,
@@ -240,7 +300,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('User Management'), backgroundColor: Colors.blue),
+      appBar: AppBar(
+          title: Text('User Management'), backgroundColor: Colors.blue),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -249,7 +310,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             // **Title**
             Text(
               "Companies",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
+              style: TextStyle(fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue),
             ),
 
             const SizedBox(height: 16),
@@ -258,7 +321,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               child: StreamBuilder<QuerySnapshot>(
                 stream: _firestore.collection("companies").snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                  if (!snapshot.hasData)
+                    return Center(child: CircularProgressIndicator());
 
                   var companies = snapshot.data!.docs;
 
@@ -269,27 +333,61 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
                       // Ensure 'role' field exists in Firestore data
                       String companyRole = company["role"] ?? "User";
+                      var companyData = company.data() as Map<String, dynamic>?; // Explicitly cast to Map
+                      bool safeCommunityAccess = (companyData != null && companyData.containsKey("safeCommunityAccess"))
+                          ? companyData["safeCommunityAccess"]
+                          : false;
+
 
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 5),
                         child: ListTile(
                           title: Text("${company["name"]}"),
-                          subtitle: Text("ID: ${company["companyId"]} | Role: $companyRole"), // ✅ Displaying company role
-                          onTap: () => _showUsersDialog(company["companyId"], company["name"]),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                  "ID: ${company["companyId"]} | Role: $companyRole"),
+                              // ✅ Show Safe Community Access ONLY for "User" role
+                              if (companyRole == "User")
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment
+                                      .spaceBetween,
+                                  children: [
+                                    const Text("Safe Community Access"),
+                                    Switch(
+                                      value: safeCommunityAccess,
+                                      onChanged: (value) {
+                                        _firestore.collection("companies").doc(
+                                            company.id).update({
+                                          "safeCommunityAccess": value,
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                          onTap: () => _showUsersDialog(
+                              company["companyId"], company["name"]),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () => _showCompanyDialog(
-                                  companyId: company["companyId"],
-                                  existingName: company["name"],
-                                  existingRole: companyRole, // ✅ Passing role when editing
-                                ),
+                                onPressed: () =>
+                                    _showCompanyDialog(
+                                      companyId: company["companyId"],
+                                      existingName: company["name"],
+                                      existingRole: companyRole,
+                                      // ✅ Passing role when editing
+                                      existingSafeAccess: safeCommunityAccess, // ✅ Passing safe access value
+                                    ),
                               ),
                               IconButton(
                                 icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deleteCompany(company["companyId"]),
+                                onPressed: () =>
+                                    _deleteCompany(company["companyId"]),
                               ),
                             ],
                           ),

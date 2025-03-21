@@ -173,7 +173,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
             ),
             const SizedBox(height: 20),
             const Text("Talk Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Row(
+              Row(
               children: [
                 _buildConsultationSection("Queue", "queue", "Talk", Colors.blueAccent),
                 _buildConsultationSection("Ongoing", "ongoing", "Talk", Colors.green),
