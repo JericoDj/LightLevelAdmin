@@ -15,7 +15,6 @@ class SessionsController {
   }
 
 // ✅ Open Chat or Talk Session
-  // ✅ Open Chat or Talk Session
   void openSession(BuildContext context, String userId, String sessionType) async {
     String collectionPath = "safe_talk/${sessionType.toLowerCase()}/queue";
 
@@ -26,17 +25,24 @@ class SessionsController {
 
     if (snapshot.exists && snapshot.data() != null) {
       var data = snapshot.data() as Map<String, dynamic>;
-      String? callRoom = data['callRoom'];
 
-      if (callRoom != null && callRoom.isNotEmpty) {
-        GoRouter.of(context).push('/navigation/talk/$userId/$callRoom'); // ✅ Opens in a new window
+      if (sessionType == "Chat") {
+        // ✅ Go to Chat Screen
+        GoRouter.of(context).push('/navigation/chat/$userId');
       } else {
-        print("❌ No valid callRoom found for user: $userId");
+        // ✅ Go to Talk Screen if callRoom exists
+        String? callRoom = data['callRoom'];
+        if (callRoom != null && callRoom.isNotEmpty) {
+          GoRouter.of(context).push('/navigation/talk/$userId/$callRoom');
+        } else {
+          print("❌ No valid callRoom found for user: $userId");
+        }
       }
     } else {
       print("❌ Document not found for user: $userId");
     }
   }
+
 
 
 
