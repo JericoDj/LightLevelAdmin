@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class BookingsScreen extends StatefulWidget {
@@ -8,6 +9,8 @@ class BookingsScreen extends StatefulWidget {
 
 class _BookingsScreenState extends State<BookingsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance; // Initialize FirebaseAuth
+  bool isSpecialist = false; // To store if the current user is a specialist
 
   // ✅ Sorting Function for Better Control
   List<Map<String, dynamic>> _sortTickets(List<QueryDocumentSnapshot> docs) {
@@ -29,6 +32,24 @@ class _BookingsScreenState extends State<BookingsScreen> {
     sortedTickets.sort((a, b) => b['lastUpdated'].compareTo(a['lastUpdated']));
 
     return sortedTickets;
+  }
+
+
+  // ✅ Check if the current user is a Specialist
+  Future<void> _checkIfSpecialist() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final userDoc = await _firestore.collection('admins').doc(user.uid).get();
+        if (userDoc.exists && userDoc['role'] == 'Specialist') {
+          setState(() {
+            isSpecialist = true; // User is a specialist
+          });
+        }
+      }
+    } catch (e) {
+      print("❌ Error checking user role: $e");
+    }
   }
 
   // ✅ Fetch Specialists from Admins Collection
@@ -61,7 +82,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
   }
 
 
-  // ✅ Build Booking List with Columns for Status
+  // ✅ Build the Bookings List based on whether the user is a Specialist or not
   Widget _buildBookingsList(List<Map<String, dynamic>> bookings) {
     final requestedBookings = bookings
         .where((booking) => booking['status'].toLowerCase() == 'requested')
@@ -75,14 +96,29 @@ class _BookingsScreenState extends State<BookingsScreen> {
         .where((booking) => booking['status'].toLowerCase() == 'finished')
         .toList();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStatusSection("REQUESTED", requestedBookings, Colors.orange),
-        _buildStatusSection("SCHEDULED", scheduledBookings, Colors.blue),
-        _buildStatusSection("FINISHED", finishedBookings, Colors.green),
-      ],
-    );
+    // If the user is a Specialist, filter only assigned bookings
+    if (isSpecialist) {
+      final assignedBookings = bookings.where((booking) {
+        return booking['specialist'] == _auth.currentUser?.displayName; // Compare with the user's name
+      }).toList();
+
+      return Column(
+        children: [
+          _buildStatusSection("SCHEDULED", assignedBookings, Colors.blue),
+          _buildStatusSection("FINISHED", assignedBookings, Colors.green),
+        ],
+      );
+    } else {
+      // Regular view for all bookings (including requested)
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatusSection("REQUESTED", requestedBookings, Colors.orange),
+          _buildStatusSection("SCHEDULED", scheduledBookings, Colors.blue),
+          _buildStatusSection("FINISHED", finishedBookings, Colors.green),
+        ],
+      );
+    }
   }
 
   // ✅ Build Each Status Section
@@ -370,6 +406,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
