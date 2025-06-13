@@ -11,10 +11,11 @@ class CallPageWidget extends StatefulWidget {
     required this.localVideo,
     required this.leaveCall,
     required this.switchCamera,
-    required this.toggleCamera,
+    required this.toggleSpeaker,
     required this.toggleMic,
     required this.isAudioOn,
     required this.isVideoOn,
+    required this.isSpeakerOn,
   });
 
   final bool connectingLoading;
@@ -24,18 +25,40 @@ class CallPageWidget extends StatefulWidget {
   final RTCVideoRenderer localVideo;
   final VoidCallback leaveCall;
   final VoidCallback switchCamera;
-  final VoidCallback toggleCamera; // <- used here for “speaker”
+  final VoidCallback toggleSpeaker;
   final VoidCallback toggleMic;
   final bool isAudioOn;
   final bool isVideoOn;
+  final bool isSpeakerOn;
 
   @override
   State<CallPageWidget> createState() => _CallPageWidgetState();
 }
 
 class _CallPageWidgetState extends State<CallPageWidget> {
-  bool isMicMuted = false;     // UI-only state
-  bool isSpeakerOn = true;     // UI-only state
+  late bool isMicMuted;
+  late bool isSpeakerOn;
+
+  @override
+  void initState() {
+    super.initState();
+    isMicMuted = !widget.isAudioOn;
+    isSpeakerOn = widget.isSpeakerOn;
+  }
+
+  void _handleMicToggle() {
+    setState(() {
+      isMicMuted = !isMicMuted;
+    });
+    widget.toggleMic();
+  }
+
+  void _handleSpeakerToggle() {
+    setState(() {
+      isSpeakerOn = !isSpeakerOn;
+    });
+    widget.toggleSpeaker();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +69,7 @@ class _CallPageWidgetState extends State<CallPageWidget> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // ── Avatar, title, call status ─────────────────────────────
+            /// ── Top Info ──
             Column(
               children: [
                 const CircleAvatar(
@@ -77,36 +100,21 @@ class _CallPageWidgetState extends State<CallPageWidget> {
               ],
             ),
 
-            // ── Action buttons ─────────────────────────────────────────
+            /// ── Action Buttons ──
             Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // Mic toggle
                     _CircleAction(
-                      icon:
-                      isMicMuted ? Icons.mic_off : Icons.mic, // visual only
+                      icon: isMicMuted ? Icons.mic_off : Icons.mic,
                       label: isMicMuted ? 'Unmute' : 'Mute',
-                      onTap: () {
-                        setState(() => isMicMuted = !isMicMuted);
-                        widget.toggleMic();
-                      },
+                      onTap: _handleMicToggle,
                     ),
-                    // Speaker toggle (repurposed from toggleCamera)
-                    _CircleAction(
-                      icon:
-                      isSpeakerOn ? Icons.volume_up : Icons.volume_off,
-                      label: isSpeakerOn ? 'Speaker On' : 'Speaker Off',
-                      onTap: () {
-                        setState(() => isSpeakerOn = !isSpeakerOn);
-                        widget.toggleCamera();
-                      },
-                    ),
+
                   ],
                 ),
                 const SizedBox(height: 30),
-                // End-call button
                 GestureDetector(
                   onTap: widget.leaveCall,
                   child: const CircleAvatar(
@@ -126,7 +134,6 @@ class _CallPageWidgetState extends State<CallPageWidget> {
   }
 }
 
-/// Little helper for the two round “Mic” & “Speaker” buttons
 class _CircleAction extends StatelessWidget {
   const _CircleAction({
     required this.icon,
@@ -163,4 +170,3 @@ class _CircleAction extends StatelessWidget {
     );
   }
 }
-  

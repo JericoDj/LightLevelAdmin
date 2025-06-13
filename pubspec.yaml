@@ -63,6 +63,9 @@ dependencies:
   carousel_slider: ^5.0.0
   dotted_border: ^2.1.0
 
+  cloud_functions: ^5.5.2
+  dio: ^5.8.0+1
+
 
 
 dev_dependencies:

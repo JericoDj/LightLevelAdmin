@@ -58,12 +58,12 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/navigation/talk/:userId/:roomId',
       builder: (context, state) {
-        final String userId = state.pathParameters['userId'] ?? "";
         final String roomId = state.pathParameters['roomId'] ?? "";
 
         return SupportsCallPage(
           roomId: roomId,
           isCaller: false,
+
         );
       },
     ),

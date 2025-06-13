@@ -11,8 +11,6 @@ class SupportsCallPage extends StatefulWidget {
   String? roomId;
   bool isCaller;
 
-  /// if 'roomId' = null; new call will be made.
-  /// if 'roomId' != null; will join the room.
   SupportsCallPage({
     Key? key,
     required this.roomId,
@@ -24,7 +22,6 @@ class SupportsCallPage extends StatefulWidget {
 }
 
 class _CallPageState extends State<SupportsCallPage> {
-  late FirebaseFirestore videoapp;
   late WebRtcService fbCallService;
 
   RTCPeerConnection? peerConnection;
@@ -39,6 +36,7 @@ class _CallPageState extends State<SupportsCallPage> {
   bool isAudioOn = true;
   bool isVideoOn = true;
   bool isFrontCameraSelected = true;
+  bool isSpeakerOn = true;
 
   @override
   void initState() {
@@ -52,13 +50,7 @@ class _CallPageState extends State<SupportsCallPage> {
 
   @override
   Widget build(BuildContext context) {
-    String title = "";
-
-    if (widget.roomId != null) {
-      title = "Room ID: ${widget.roomId}";
-    } else {
-      title = "Loading... Wait...";
-    }
+    String title = widget.roomId != null ? "Room ID: ${widget.roomId}" : "Loading... Wait...";
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 26, 26, 26),
@@ -79,12 +71,13 @@ class _CallPageState extends State<SupportsCallPage> {
         roomId: widget.roomId ?? "",
         remoteVideo: remoteVideo,
         localVideo: localVideo,
-        leaveCall: () => _leaveCall(),
-        switchCamera: () => _switchCamera(),
-        toggleCamera: () => _toggleCamera(),
-        toggleMic: () => _toggleMic(),
+        leaveCall: _leaveCall,
+        switchCamera: _switchCamera,
+        toggleMic: _toggleMic,
+        toggleSpeaker: _toggleSpeaker,
         isAudioOn: isAudioOn,
         isVideoOn: isVideoOn,
+        isSpeakerOn: isSpeakerOn,
         isCaller: widget.isCaller,
       ),
     );
@@ -93,17 +86,14 @@ class _CallPageState extends State<SupportsCallPage> {
   Future<void> init() async {
     try {
       await remoteVideo.initialize();
-      final remoteStreams = peerConnection?.getRemoteStreams();
 
-      if (remoteStreams != null && remoteStreams.isEmpty) {
-        peerConnection?.onTrack = (event) {
-          if (event.track.kind == 'video') {
-            setState(() {
-              remoteVideo.srcObject = event.streams.first;
-            });
-          }
-        };
-      }
+      peerConnection?.onTrack = (event) {
+        if (event.track.kind == 'video') {
+          setState(() {
+            remoteVideo.srcObject = event.streams.first;
+          });
+        }
+      };
 
       if (widget.roomId == null) {
         String newRoomId = await fbCallService.call();
@@ -116,73 +106,72 @@ class _CallPageState extends State<SupportsCallPage> {
         iceStatusListen();
       }
     } catch (e) {
-      debugPrint("************** call_start_page : LN=77 : $e");
+      debugPrint("************** call_start_page : init() error: $e");
     }
   }
+
   Future<void> openMicrophoneOnly() async {
-    // await localVideo.initialize(); // Optional, if you still want to render local (empty) video view
     peerConnection = await fbCallService.createPeer();
 
-    final Map<String, dynamic> mediaConstraints = {
+    final mediaConstraints = {
       'audio': true,
-      'video': false, // <--- Disable video entirely
+      'video': false,
     };
 
     localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
-    localStream!.getTracks().forEach(
-          (track) async => await peerConnection?.addTrack(track, localStream!),
-    );
-
-    // localVideo.srcObject = localStream; // Optional
-    // setState(() {});
+    for (var track in localStream!.getTracks()) {
+      await peerConnection?.addTrack(track, localStream!);
+    }
   }
 
+  void _toggleMic() {
+    setState(() {
+      isAudioOn = !isAudioOn;
+      localStream?.getAudioTracks().forEach((track) {
+        track.enabled = isAudioOn;
+      });
+    });
+  }
 
-  Future<void> openCamera() async {
-    await localVideo.initialize();
-    peerConnection = await fbCallService.createPeer();
+  void _toggleSpeaker() async {
+    setState(() {
+      isSpeakerOn = !isSpeakerOn;
+    });
+    await Helper.setSpeakerphoneOn(isSpeakerOn);
+  }
 
-    final Map<String, dynamic> mediaConstraints = {
-      'audio': isAudioOn,
-      'video': isVideoOn,
-    };
+  void _toggleCamera() {
+    setState(() {
+      isVideoOn = !isVideoOn;
+      localStream?.getVideoTracks().forEach((track) {
+        track.enabled = isVideoOn;
+      });
+    });
+  }
 
-    localStream = await navigator.mediaDevices.getUserMedia(
-      mediaConstraints,
-    );
-
-    localStream!.getTracks().forEach(
-          (track) async => await peerConnection?.addTrack(
-        track,
-        localStream!,
-      ),
-    );
-    localVideo.srcObject = localStream;
-    setState(() {});
+  void _switchCamera() {
+    setState(() {
+      isFrontCameraSelected = !isFrontCameraSelected;
+      localStream?.getVideoTracks().forEach((track) {
+        // ignore: deprecated_member_use
+        track.switchCamera();
+      });
+    });
   }
 
   void iceStatusListen() {
-    try {
-      peerConnection!.onIceConnectionState = (iceConnectionState) async {
-        if ((peerConnection!.iceConnectionState ==
-            RTCIceConnectionState.RTCIceConnectionStateConnected ||
-            peerConnection!.iceConnectionState ==
-                RTCIceConnectionState.RTCIceConnectionStateCompleted)) {
-          _connectingLoadingComplated();
-        }
+    peerConnection?.onIceConnectionState = (state) {
+      if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
+          state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
+        _connectingLoadingComplated();
+      }
 
-        if (iceConnectionState ==
-            RTCIceConnectionState.RTCIceConnectionStateDisconnected ||
-            iceConnectionState ==
-                RTCIceConnectionState.RTCIceConnectionStateFailed) {
-          // The other person left the chat or was disconnected.
-          _leaveCall();
-        }
-      };
-    } catch (e) {
-      debugPrint("********* call_start_page : LN=109 : $e");
-    }
+      if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected ||
+          state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
+        _leaveCall();
+      }
+    };
   }
 
   void _connectingLoadingComplated() {
@@ -193,53 +182,21 @@ class _CallPageState extends State<SupportsCallPage> {
     }
   }
 
-  /// The other person left the chat or was disconnected.
   void _leaveCall() {
     if (mounted) {
       Navigator.pop(context);
-      fbCallService.deleteFirebaseDoc(
-        roomId: widget.roomId.toString(),
-      );
+      fbCallService.deleteFirebaseDoc(roomId: widget.roomId ?? "");
     }
   }
 
-  _toggleMic() {
-    isAudioOn = !isAudioOn;
-    // enable or disable audio track
-    localStream?.getAudioTracks().forEach((track) {
-      track.enabled = isAudioOn;
-    });
-    setState(() {});
-  }
-
-  _toggleCamera() {
-    isVideoOn = !isVideoOn;
-    // enable or disable video track
-    localStream?.getVideoTracks().forEach((track) {
-      track.enabled = isVideoOn;
-    });
-    setState(() {});
-  }
-
-  _switchCamera() {
-    isFrontCameraSelected = !isFrontCameraSelected;
-    localStream?.getVideoTracks().forEach((track) {
-      // ignore: deprecated_member_use
-      track.switchCamera();
-    });
-    setState(() {});
-  }
-
   @override
-  void dispose() async {
+  void dispose() {
     peerConnection?.close();
-    localStream?.getTracks().forEach((track) {
-      track.stop();
-    });
-    localVideo.dispose();
-    remoteVideo.dispose();
+    localStream?.getTracks().forEach((track) => track.stop());
     localStream?.dispose();
     peerConnection?.dispose();
+    localVideo.dispose();
+    remoteVideo.dispose();
     super.dispose();
   }
 }
