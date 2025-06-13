@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../utils/colors.dart';
+
 class ChatScreen extends StatefulWidget {
   final String userId;
+  final String fullName;
+  final String companyId;
 
-  const ChatScreen({Key? key, required this.userId}) : super(key: key);
+  const ChatScreen({Key? key, required this.userId ,required this.fullName , required this.companyId}) : super(key: key);
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
@@ -77,12 +81,49 @@ class _ChatScreenState extends State<ChatScreen> {
     final sessionRef = FirebaseFirestore.instance.collection("safe_talk/chat/queue").doc(widget.userId);
 
     try {
+      // Update the queue status
       await sessionRef.update({"status": "finished"});
 
+      // Add system message
       await FirebaseFirestore.instance.collection(chatRoomId).add({
         "senderId": "system",
         "message": "✅ This chat session has been marked as finished.",
         "timestamp": FieldValue.serverTimestamp(),
+      });
+
+      // Fetch all messages
+      final messagesSnapshot = await FirebaseFirestore.instance
+          .collection(chatRoomId)
+          .orderBy("timestamp", descending: false)
+          .get();
+
+      List<Map<String, dynamic>> messages = messagesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          "senderId": data["senderId"],
+          "message": data["message"],
+          "timestamp": (data["timestamp"] as Timestamp?)?.toDate().toIso8601String() ?? "",
+        };
+      }).toList();
+
+      // Save to report
+      final timestamp = DateTime.now();
+      final reportRef = FirebaseFirestore.instance
+          .collection("reports")
+          .doc("sessions")
+          .collection(widget.companyId)
+          .doc("chats")
+          .collection(widget.fullName)
+          .doc(timestamp.toIso8601String());
+
+      await reportRef.set({
+        "companyId": widget.companyId,
+        "userId": widget.userId,
+        "fullName": widget.fullName,
+        "adminId": currentAdminUid,
+        "status": "finished",
+        "timestamp": timestamp,
+        "messages": messages, // 🔥 full message list
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -99,25 +140,73 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+
+
   void _cancelChat() async {
-    final sessionRef = FirebaseFirestore.instance.collection("safe_talk/chat/queue").doc(widget.userId);
+    final sessionRef = FirebaseFirestore.instance
+        .collection("safe_talk/chat/queue")
+        .doc(widget.userId);
 
     try {
+      // Update the queue status
       await sessionRef.update({"status": "cancelled"});
 
+      // Add system message
       await FirebaseFirestore.instance.collection(chatRoomId).add({
         "senderId": "system",
         "message": "❌ This chat session has been cancelled.",
         "timestamp": FieldValue.serverTimestamp(),
       });
 
+      // Fetch all messages
+      final messagesSnapshot = await FirebaseFirestore.instance
+          .collection(chatRoomId)
+          .orderBy("timestamp", descending: false)
+          .get();
+
+      List<Map<String, dynamic>> messages = messagesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          "senderId": data["senderId"],
+          "message": data["message"],
+          "timestamp": (data["timestamp"] as Timestamp?)?.toDate().toIso8601String() ?? "",
+        };
+      }).toList();
+
+      // Save to report
+      final timestamp = DateTime.now();
+      final reportRef = FirebaseFirestore.instance
+          .collection("reports")
+          .doc("sessions")
+          .collection(widget.companyId)
+          .doc("chats")
+          .collection(widget.fullName)
+          .doc(timestamp.toIso8601String());
+
+      await reportRef.set({
+        "companyId": widget.companyId,
+        "userId": widget.userId,
+        "fullName": widget.fullName,
+        "adminId": currentAdminUid,
+        "status": "cancelled",
+        "timestamp": timestamp,
+        "messages": messages,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Chat session cancelled and saved.")),
+      );
+
+      await Future.delayed(const Duration(seconds: 1));
       _closeWindow();
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("❌ Error cancelling chat: $e")),
       );
     }
   }
+
 
   void _closeWindow() {
     GoRouter.of(context).go('/navigation/sessions');
@@ -127,13 +216,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Chat Session with ${widget.userId}"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app, color: Colors.white),
-            onPressed: _closeWindow,
-          ),
-        ],
+
+        title: Text("Chat Session with ${widget.fullName}"),
+        automaticallyImplyLeading: false,
+
       ),
       body: Column(
         children: [
@@ -225,7 +311,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.send, color: Colors.blueAccent),
+                      icon: const Icon(Icons.send, color: MyColors.color2),
                       onPressed: _sendMessage,
                     ),
                   ],
@@ -241,12 +327,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 ElevatedButton(
                   onPressed: _finishChat,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  child: const Text("Finish Chat"),
+                  child: const Text("Finish Chat", style: TextStyle(color: Colors.white),),
                 ),
                 ElevatedButton(
                   onPressed: _cancelChat,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: const Text("Cancel Chat"),
+                  child: const Text("Cancel Chat", style: TextStyle(color: Colors.white),),
                 ),
               ],
             ),

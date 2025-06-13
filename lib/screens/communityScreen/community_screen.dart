@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../utils/colors.dart';
+
 class CommunityScreen extends StatefulWidget {
   @override
   _CommunityScreenState createState() => _CommunityScreenState();
@@ -22,14 +24,34 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Community Management'), backgroundColor: Colors.blue),
+
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(50), // <-- set your desired height here
+        child: AppBar(
+          title: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: const Text(
+                'Community Management',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24  ,
+                ),
+              ),
+            ),
+          ),
+          backgroundColor: Colors.green[800],
+          elevation: 0,
+        ),
+      ),
       body: Column(
         children: [
           Expanded(
             child: Row(
               children: [
-                _buildPostSection("Pending Review", "pending"),
-                _buildPostSection("All Posts", "approved"),
+                _buildPostSection("Pending Review Posts", "pending"),
+                _buildPostSection("User Posts", "approved"),
               ],
             ),
           ),
@@ -51,7 +73,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No posts"));
+            return Center(child: Text("No $title"));
           }
 
           var filteredPosts = snapshot.data!.docs;
@@ -61,7 +83,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(title, style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
+                    fontSize: 18, fontWeight: FontWeight.bold, color: MyColors.color1)),
               ),
               Expanded(
                 child: ListView.builder(
@@ -73,7 +95,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
                       child: ListTile(
-                        title: Text(post["userId"]),
+                        title: Text(post["username"]),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -83,12 +105,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                 children: [
                                   TextButton(
                                     onPressed: () => _showLikesDialog(post["likes"]),
-                                    child: Text("👍 ${post["likes"]?.length ?? 0} Likes"),
+                                    child: Text(
+                                      "👍 ${post["likes"]?.length ?? 0} Likes", style: TextStyle(color: MyColors.color2),
+                                    ),
                                   ),
                                   TextButton(
                                     onPressed: () => _showCommentsDialog(
                                         post["comments"] ?? [], postId),
-                                    child: Text("💬 ${post["comments"]?.length ?? 0} Comments"),
+                                    child: Text("💬 ${post["comments"]?.length ?? 0} Comments",style: TextStyle(color: MyColors.color2),),
                                   ),
                                 ],
                               ),
@@ -186,12 +210,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      child: const Text("Delete"),
+                      child: const Text("Delete", style: TextStyle(color: MyColors.white),),
                     ),
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                      child: const Text("Cancel"),
+                      child: const Text("Cancel",style: TextStyle(color: MyColors.white),),
                     ),
                   ],
                 ),
@@ -234,8 +258,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 ),
                 const SizedBox(height: 10),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: MyColors.color2),
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Close"),
+                  child: const Text("Close",style: TextStyle(color: MyColors.white),),
                 ),
               ],
             ),
@@ -295,8 +320,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ),
                     const SizedBox(height: 10),
                     ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: MyColors.color2),
                       onPressed: () => Navigator.pop(context),
-                      child: const Text("Close"),
+                      child: const Text("Close", style: TextStyle(color: MyColors.white),),
                     ),
                   ],
                 ),

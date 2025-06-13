@@ -36,7 +36,7 @@ class LoginScreen extends StatelessWidget {
                     // App Name
                     const Text(
                       textAlign: TextAlign.center,
-                      "Light Level Psychological Solutions",
+                      "Luminara",
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,

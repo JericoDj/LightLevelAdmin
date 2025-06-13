@@ -60,7 +60,7 @@ class VideoRepository {
         title: doc['title'],
         description: doc['description'],
         thumbnail: doc['thumbnail'],
-        videoFile: doc['videoFile'],
+        videoFile: doc['videoFile'], url: '',
       )).toList();
     } catch (e) {
       throw Exception("Error fetching videos: $e");

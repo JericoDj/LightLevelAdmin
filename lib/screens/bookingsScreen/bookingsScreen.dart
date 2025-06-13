@@ -1,6 +1,14 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
+import 'package:http/http.dart' as http;
+
+import '../../controllers/notification_controller.dart';
+import '../../utils/user_storage.dart';
 
 class BookingsScreen extends StatefulWidget {
   @override
@@ -8,9 +16,28 @@ class BookingsScreen extends StatefulWidget {
 }
 
 class _BookingsScreenState extends State<BookingsScreen> {
+  final NotificationController _notificationController = Get.put(NotificationController());
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance; // Initialize FirebaseAuth
   bool isSpecialist = false; // To store if the current user is a specialist
+  final RxList<Map<String, dynamic>> bookingsList = <Map<String, dynamic>>[].obs; // ✅ Add this
+  String? fullName; // add at the top of your State class
+
+  @override
+  void initState() {
+    super.initState();
+
+    final role = UserStorage.getUserRole();
+    isSpecialist = role == 'Specialist';
+    print(isSpecialist);
+    final userData = UserStorage.getUser();
+    print(userData);
+    fullName = userData?['full_name'] ?? '';
+    print(fullName ?? "none");
+    setState(() {}); // Force widget to rebuild after getting user data
+  }
+
 
   // ✅ Sorting Function for Better Control
   List<Map<String, dynamic>> _sortTickets(List<QueryDocumentSnapshot> docs) {
@@ -23,9 +50,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
         'status': data['status'] ?? 'Requested',
         'specialist': data['specialist'] ?? 'Not Assigned',
         'link': data['meeting_link'] ?? '',
+        'full_name': data['full_name'] ?? '',
+        'phone': data['phone'] ?? '',
+        'company_id': data['company_id'] ?? '',
         'lastUpdated': data['lastUpdated'] is Timestamp
             ? (data['lastUpdated'] as Timestamp).toDate()
-            : DateTime(2000), // Fallback for null timestamps
+            : DateTime(2000),
+
+        // ✅ Include these:
+        'time': data['time'] ?? '',
+        'date_requested': data['date_requested'] ?? '',
       };
     }).toList();
 
@@ -35,22 +69,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
   }
 
 
+
   // ✅ Check if the current user is a Specialist
-  Future<void> _checkIfSpecialist() async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        final userDoc = await _firestore.collection('admins').doc(user.uid).get();
-        if (userDoc.exists && userDoc['role'] == 'Specialist') {
-          setState(() {
-            isSpecialist = true; // User is a specialist
-          });
-        }
-      }
-    } catch (e) {
-      print("❌ Error checking user role: $e");
-    }
-  }
+
 
   // ✅ Fetch Specialists from Admins Collection
   Future<List<String>> _fetchSpecialists() async {
@@ -84,42 +105,42 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   // ✅ Build the Bookings List based on whether the user is a Specialist or not
   Widget _buildBookingsList(List<Map<String, dynamic>> bookings) {
-    final requestedBookings = bookings
-        .where((booking) => booking['status'].toLowerCase() == 'requested')
-        .toList();
-
-    final scheduledBookings = bookings
-        .where((booking) => booking['status'].toLowerCase() == 'scheduled')
-        .toList();
-
-    final finishedBookings = bookings
-        .where((booking) => booking['status'].toLowerCase() == 'finished')
-        .toList();
-
-    // If the user is a Specialist, filter only assigned bookings
     if (isSpecialist) {
-      final assignedBookings = bookings.where((booking) {
-        return booking['specialist'] == _auth.currentUser?.displayName; // Compare with the user's name
+      print(fullName);
+      // ✅ Filter only bookings assigned to the current specialist
+      final assigned = bookings.where((b) {
+        print(b);
+        print('Comparing booking["specialist"]: ${b['specialist']} with user: $fullName');
+        return (b['specialist']?.toString().trim() ?? '') == fullName?.trim();
       }).toList();
 
-      return Column(
-        children: [
-          _buildStatusSection("SCHEDULED", assignedBookings, Colors.blue),
-          _buildStatusSection("FINISHED", assignedBookings, Colors.green),
-        ],
-      );
-    } else {
-      // Regular view for all bookings (including requested)
+      final scheduled = assigned.where((b) => b['status'].toLowerCase() == 'scheduled').toList();
+      final finished = assigned.where((b) => b['status'].toLowerCase() == 'finished').toList();
+
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildStatusSection("REQUESTED", requestedBookings, Colors.orange),
-          _buildStatusSection("SCHEDULED", scheduledBookings, Colors.blue),
-          _buildStatusSection("FINISHED", finishedBookings, Colors.green),
+          _buildStatusSection("SCHEDULED", scheduled, Colors.blue),
+          _buildStatusSection("FINISHED", finished, Colors.green),
+        ],
+      );
+    } else {
+      // ✅ Admin/Super Admin View – all bookings grouped by status
+      final requested = bookings.where((b) => b['status'].toLowerCase() == 'requested').toList();
+      final scheduled = bookings.where((b) => b['status'].toLowerCase() == 'scheduled').toList();
+      final finished = bookings.where((b) => b['status'].toLowerCase() == 'finished').toList();
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatusSection("REQUESTED", requested, Colors.orange),
+          _buildStatusSection("SCHEDULED", scheduled, Colors.blue),
+          _buildStatusSection("FINISHED", finished, Colors.green),
         ],
       );
     }
   }
+
 
   // ✅ Build Each Status Section
   Widget _buildStatusSection(String title, List<Map<String, dynamic>> bookings, Color color) {
@@ -158,6 +179,10 @@ class _BookingsScreenState extends State<BookingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Consultation Type: ${booking['consultation_type']}'),
+                          Text('Full Name: ${booking['full_name']}'),
+                          Text('Phone: ${booking['phone']}'),
+                          Text('Company ID: ${booking['company_id']}'),
+                          const SizedBox(height: 4),
                           Text(
                             'Specialist: ${booking['specialist'] ?? "Not Assigned"}',
                             style: const TextStyle(
@@ -180,16 +205,46 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
-  // ✅ Dialog to Manage Booking Details
   void _showBookingDetails(Map<String, dynamic> booking) async {
+    print("📦 Booking passed into dialog:");
+    print(booking);
+
     List<String> specialists = await _fetchSpecialists();
     List<String> timeOptions = _generateTimeOptions();
 
-    TextEditingController linkController = TextEditingController();
+    String fallbackTime = '12:00 AM';
+
+    // Get and normalize the booking time
+    String? bookingTime = booking['time'];
+    print(bookingTime);
+    String? selectedTime = bookingTime;
+
+    if (bookingTime != null && bookingTime.trim().isNotEmpty) {
+      final normalized = bookingTime.trim();
+      selectedTime = timeOptions.firstWhere(
+            (t) => t.trim().toLowerCase() == normalized.toLowerCase(),
+        orElse: () {
+          print("⚠️ Time '${normalized}' not found in list. Falling back.");
+          return fallbackTime;
+        },
+      );
+    }
+
+    print("⏰ Selected time initialized to: $selectedTime");
+
+    // Prepare specialists list with fallback
+    final specialistList = {'Not Assigned', ...specialists}.toSet().toList();
+
+    TextEditingController linkController =
+    TextEditingController(text: booking['meeting_link'] ?? '');
 
     String? selectedSpecialist = booking['specialist'];
-    String selectedTime = booking['time'] ?? '12:00 AM';
-    DateTime selectedDate = DateTime.now();
+    if (selectedSpecialist == null || !specialistList.contains(selectedSpecialist)) {
+      selectedSpecialist = 'Not Assigned';
+    }
+
+    DateTime selectedDate =
+        DateTime.tryParse(booking['date_requested'] ?? '') ?? DateTime.now();
 
     showDialog(
       context: context,
@@ -205,11 +260,11 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 Text("Consultation Type: ${booking['consultation_type']}"),
                 const SizedBox(height: 10),
 
-                // Specialist Dropdown
+                // Specialist Picker
                 DropdownButtonFormField<String>(
                   value: selectedSpecialist,
                   decoration: const InputDecoration(labelText: "Assign Specialist"),
-                  items: specialists.map((specialist) {
+                  items: specialistList.map((specialist) {
                     return DropdownMenuItem<String>(
                       value: specialist,
                       child: Text(specialist),
@@ -272,19 +327,56 @@ class _BookingsScreenState extends State<BookingsScreen> {
               child: const Text("Cancel"),
             ),
             TextButton(
-              onPressed: () {
-                _updateBookingDetails(
-                  booking['consultation_id'],   // Consultation ID
-                  'Scheduled',                  // ✅ Added Status (e.g., 'Scheduled')
-                  selectedSpecialist ?? '',     // Specialist
-                  selectedTime,                 // Time
-                  selectedDate.toIso8601String().split('T')[0],  // Date
-                  linkController.text.trim(),   // Meeting Link
+              onPressed: () async {
+                String? consultationId = booking['consultation_id'];
+                if (consultationId == null) {
+                  print("❌ consultation_id is missing");
+                  return;
+                }
+
+                String? fullName = booking['full_name'];
+                if (fullName == null) {
+                  print("❌ full_name is missing");
+                  return;
+                }
+
+                // Get FCM token from users collection
+                String? userFcmToken;
+                try {
+                  final querySnapshot = await FirebaseFirestore.instance
+                      .collection('users')
+                      .where('fullName', isEqualTo: fullName)
+                      .limit(1)
+                      .get();
+
+                  if (querySnapshot.docs.isNotEmpty) {
+                    final userDoc = querySnapshot.docs.first;
+                    userFcmToken = userDoc.data()['fcmToken'];
+                  }
+                } catch (e) {
+                  print("❌ Error fetching user: $e");
+                }
+
+                if (userFcmToken != null) {
+                  await _notificationController.sendNotificationToToken(
+                    userFcmToken,
+                    "Booking Scheduled",
+                    "Your booking has been successfully scheduled.",
+                  );
+                }
+
+                await _updateBookingDetails(
+                  consultationId,
+                  'Scheduled',
+                  selectedSpecialist ?? '',
+                  selectedTime ?? "",
+                  selectedDate.toIso8601String().split('T')[0],
+                  linkController.text.trim(),
                 );
+
                 Navigator.pop(context);
               },
-
-              child: const Text("Schedule"), // 🔥 Changed to 'Schedule'
+              child: const Text("Schedule"),
             ),
           ],
         );
@@ -294,61 +386,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
 
 
-  // ✅ Dialog for Scheduled Booking Actions
-  void _showScheduledBookingActions(Map<String, dynamic> booking) async {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Manage Booking"),
-          content: const Text("Choose an action:"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _updateBookingDetails(
-                  booking['consultation_id'],
-                  'Finished',
-                  booking['specialist'] ?? 'Not Assigned',
-                  booking['time'] ?? '',
-                  booking['date_requested'] ?? '',
-                  booking['meeting_link'] ?? '',
-                );
-                Navigator.pop(context);
-              },
-              child: const Text("Mark as Finished"),
-            ),
-
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showBookingDetails(booking);
-              },
-              child: const Text("Reschedule"),
-            ),
-
-            TextButton(
-              onPressed: () {
-                _updateBookingDetails(
-                  booking['consultation_id'],
-                  'Cancelled',
-                  booking['specialist'] ?? 'Not Assigned',
-                  booking['time'] ?? '',
-                  booking['date_requested'] ?? '',
-                  booking['meeting_link'] ?? '',
-                );
-                Navigator.pop(context);
-              },
-              child: const Text("Cancel"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-
-
-  // ✅ Update Booking Details in Firestore
+// ✅ Update the Firestore booking details
   Future<void> _updateBookingDetails(
       String consultationId,
       String status,
@@ -371,6 +409,115 @@ class _BookingsScreenState extends State<BookingsScreen> {
       print("❌ Error updating booking details: $e");
     }
   }
+
+
+
+  void _showScheduledBookingActions(Map<String, dynamic> booking) async {
+    String consultationId = booking['consultation_id'];
+
+    // ✅ Check if local data has both date and time
+    String? date = booking['date_requested'];
+    String? time = booking['time'];
+
+    // 🔍 If either is missing, fetch latest from Firestore
+    if (date == null || time == null || date.isEmpty || time.isEmpty) {
+      print("⚠️ Date or time missing locally. Fetching from Firestore...");
+
+      try {
+        DocumentSnapshot doc = await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(consultationId)
+            .get();
+
+        Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
+
+        if (data != null) {
+          date = data['date_requested'] ?? '';
+          time = data['time'] ?? '';
+
+          print("📥 Fetched from Firestore — date: $date, time: $time");
+        } else {
+          print("❌ Booking document not found in Firestore.");
+        }
+      } catch (e) {
+        print("❌ Error fetching booking from Firestore: $e");
+      }
+    }
+
+    String formattedDateTime = 'N/A';
+    if (date != null && time != null && date.isNotEmpty && time.isNotEmpty) {
+      formattedDateTime = "$date at $time";
+    } else {
+      print("⚠️ Still missing date/time after Firestore check.");
+    }
+
+    // 🧾 Show dialog
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Manage Booking"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("👤 Full Name: ${booking['full_name'] ?? 'N/A'}"),
+              Text("📱 Phone: ${booking['phone'] ?? 'N/A'}"),
+              Text("🏢 Company ID: ${booking['company_id'] ?? 'N/A'}"),
+              Text("📅 Scheduled For: $formattedDateTime"),
+              Text("💬 Consultation Type: ${booking['consultation_type'] ?? 'N/A'}"),
+              Text("🔗 Meeting Link: ${booking['meeting_link'] ?? 'None'}"),
+              const SizedBox(height: 12),
+              const Text("Choose an action:"),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _updateBookingDetails(
+                  consultationId,
+                  'Finished',
+                  booking['specialist'] ?? 'Not Assigned',
+                  time ?? '',
+                  date ?? '',
+                  booking['meeting_link'] ?? '',
+                );
+                Navigator.pop(context);
+              },
+              child: const Text("Mark as Finished"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showBookingDetails(booking);
+              },
+              child: const Text("Reschedule"),
+            ),
+            TextButton(
+              onPressed: () {
+
+                _updateBookingDetails(
+                  consultationId,
+                  'Cancelled',
+                  booking['specialist'] ?? 'Not Assigned',
+                  time ?? '',
+                  date ?? '',
+                  booking['meeting_link'] ?? '',
+                );
+                Navigator.pop(context);
+              },
+              child: const Text("Cancel"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+
+
+
 
   // ✅ Status Tag UI
   Widget _buildStatusTag(String status) {
@@ -411,10 +558,25 @@ class _BookingsScreenState extends State<BookingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bookings Management'),
-        backgroundColor: Colors.blue[800],
-        elevation: 0,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(50), // <-- set your desired height here
+        child: AppBar(
+          title: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: const Text(
+                'Booking Management',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24  ,
+                ),
+              ),
+            ),
+          ),
+          backgroundColor: Colors.green[800],
+          elevation: 0,
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore.collection('bookings').snapshots(),
@@ -427,11 +589,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
             return const Center(child: Text("No bookings available"));
           }
 
-          final sortedBookings = _sortTickets(snapshot.data!.docs);
+          bookingsList.value = _sortTickets(snapshot.data!.docs);
 
-          return _buildBookingsList(sortedBookings);
+          return Obx(() => _buildBookingsList(bookingsList));
         },
       ),
     );
   }
+
 }

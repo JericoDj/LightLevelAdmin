@@ -17,5 +17,21 @@ class UserStorage {
 
   static void clearUser() {
     _storage.remove('user');
+    _storage.remove('user_role'); // Also clear the saved role
+  }
+
+  // ✅ Save role
+  static void saveUserRole(String role) {
+    _storage.write('user_role', role);
+  }
+
+  // ✅ Get role
+  static String? getUserRole() {
+    return _storage.read('user_role');
+  }
+
+  // ✅ Clear role
+  static void clearUserRole() {
+    _storage.remove('user_role');
   }
 }

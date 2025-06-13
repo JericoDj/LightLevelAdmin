@@ -26,29 +26,43 @@ class AuthRepository extends GetxController {
       User? user = userCredential.user;
 
       if (user != null) {
-        DocumentSnapshot adminDoc =
-        await _firestore.collection("admins").doc(user.uid).get();
-
+        DocumentSnapshot adminDoc = await _firestore.collection("admins").doc(user.uid).get();
 
         if (adminDoc.exists) {
-
+          final data = adminDoc.data() as Map<String, dynamic>?;
+          print (data);
+          final role = data?['role'] ?? 'User';
+          final fullName = data?["fullName"] ?? '';
+          // ✅ Save user and role to local storage
           UserStorage.saveUser(
             uid: user.uid,
             email: email,
+            fullName: fullName
           );
+          UserStorage.saveUserRole(role);
 
-          context.go('/navigation/home');
+          // ✅ Route based on role
+          if (role == 'Specialist') {
+            context.go('/navigation/bookings');
+          } else if (role == 'Super Admin' || role == 'Admin') {
+
+            context.go('/navigation/home');
+          } else {
+            await _auth.signOut();
+            UserStorage.clearUser();
+            UserStorage.clearUserRole();
+          }
         } else {
           await _auth.signOut();
-          Get.snackbar("Access Denied", "You are not authorized to access this panel.",
-              snackPosition: SnackPosition.BOTTOM);
+
         }
       }
     } on FirebaseAuthException catch (e) {
-      Get.snackbar("Login Failed", e.message ?? "An error occurred",
-          snackPosition: SnackPosition.BOTTOM);
+
     }
   }
+
+
 
   Future<UserCredential?> registerAdmin({
     required String email,
@@ -73,7 +87,9 @@ class AuthRepository extends GetxController {
         uid: userCredential.user!.uid,
         email: email,
         fullName: fullName,
+
       );
+      print(fullName);
 
       context.go('/navigation/home');
 

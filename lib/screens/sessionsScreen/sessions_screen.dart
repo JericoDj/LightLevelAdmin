@@ -109,7 +109,9 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("User: ${data["userId"] ?? "Unknown"}",
+                    Text("User: ${data["fullName"] ?? "Unknown"}",
+                        style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text("Company Id: ${data["companyId"] ?? "Unknown"}",
                         style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
                     Text("Session: ${data["sessionType"] ?? "Unknown"}", style: TextStyle(color: Colors.grey.shade700)),
                   ],
@@ -120,7 +122,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: _buildActionButtons(context, status, data["userId"], data["sessionType"]),
+            children: _buildActionButtons(context, status, data["userId"], data["sessionType"], data["fullName"] ?? "Unknown", data["companyId"] ?? "Unknown"),
           ),
         ],
       ),
@@ -128,26 +130,28 @@ class _SessionsScreenState extends State<SessionsScreen> {
   }
 
   // ✅ Generate Action Buttons
-  List<Widget> _buildActionButtons(BuildContext context, String status, String userId, String sessionType) {
+  List<Widget> _buildActionButtons(BuildContext context, String status, String userId, String sessionType, String fullName, String companyId) {
     if (status == "queue") {
       return [
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          onPressed: () => controller.admitUser(context, userId, sessionType),
-          child: const Text("Admit"),
+          onPressed: () => controller.admitUser(context, userId, sessionType, fullName, companyId),
+          child: const Text("Admit", style: TextStyle(color: Colors.white),),
         ),
       ];
     } else if (status == "ongoing" || status == "finished") {
       return [
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-          onPressed: () => controller.openSession(context, userId, sessionType),
-          child: const Text("Open"),
+          onPressed: () => controller.openSession(context, userId, sessionType, fullName, companyId),
+          child: Text(
+              style: const TextStyle(color: Colors.white),
+              "Open") ,
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
           onPressed: () => _showStatusDialog(context, userId, sessionType),
-          child: const Text("Change Status"),
+          child: const Text("Change Status", style: TextStyle(color: Colors.white),),
         ),
       ];
     }
@@ -157,7 +161,26 @@ class _SessionsScreenState extends State<SessionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sessions Management')),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(50), // <-- set your desired height here
+        child: AppBar(
+          title: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: const Text(
+                'Session Management',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24  ,
+                ),
+              ),
+            ),
+          ),
+          backgroundColor: Colors.green[800],
+          elevation: 0,
+        ),
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -173,7 +196,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
             ),
             const SizedBox(height: 20),
             const Text("Talk Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              Row(
+            Row(
               children: [
                 _buildConsultationSection("Queue", "queue", "Talk", Colors.blueAccent),
                 _buildConsultationSection("Ongoing", "ongoing", "Talk", Colors.green),

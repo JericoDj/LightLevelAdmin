@@ -15,8 +15,11 @@ class SessionsController {
   }
 
 // ✅ Open Chat or Talk Session
-  void openSession(BuildContext context, String userId, String sessionType) async {
+  void openSession(BuildContext context, String userId, String sessionType, String fullName, String companyId) async {
     String collectionPath = "safe_talk/${sessionType.toLowerCase()}/queue";
+    print(fullName);
+
+
 
     DocumentSnapshot snapshot = await FirebaseFirestore.instance
         .collection(collectionPath)
@@ -28,7 +31,7 @@ class SessionsController {
 
       if (sessionType == "Chat") {
         // ✅ Go to Chat Screen
-        GoRouter.of(context).push('/navigation/chat/$userId');
+        GoRouter.of(context).push('/navigation/chat/$userId/$fullName/${data['companyId']}');
       } else {
         // ✅ Go to Talk Screen if callRoom exists
         String? callRoom = data['callRoom'];
@@ -62,7 +65,7 @@ class SessionsController {
   }
 
   // ✅ Admit User - Update Firestore and Open Chat
-  Future<void> admitUser(BuildContext context, String userId, String sessionType) async {
+  Future<void> admitUser(BuildContext context, String userId, String sessionType, String fullName, String companyId) async {
     String collectionPath = sessionType == "Chat"
         ? "safe_talk/chat/queue"
         : "safe_talk/talk/queue";
@@ -77,7 +80,7 @@ class SessionsController {
       }
 
       await firestore.collection("sessions").doc(userId).set({
-        "userId": userId,
+        "userId": fullName,
         "sessionType": sessionType,
         "status": "ongoing",
         "timestamp": FieldValue.serverTimestamp(),
@@ -85,8 +88,9 @@ class SessionsController {
 
       await userDoc.update({"status": "ongoing"});
       print("🔥 User $userId admitted to session");
+      print(fullName);
 
-      openSession(context, userId, sessionType);
+      openSession(context, userId, sessionType, fullName, companyId);
     } catch (e) {
       print("❌ Error admitting user: $e");
     }

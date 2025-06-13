@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
+import 'package:lightlevelpsychosolutionsadmin/utils/user_storage.dart';
 
 class NavigationBarMenuScreen extends StatefulWidget {
   final Widget child; // Accepts child for ShellRoute navigation
@@ -24,7 +25,30 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchUserRole();
+    _loadUserRole();
+  }
+
+  // ✅ Load role from GetStorage
+  Future<void> _loadUserRole() async {
+    final role = UserStorage.getUserRole();
+
+    if (role == null) {
+      // Optionally fetch from Firestore if needed or wait a bit
+      print("⚠️ Role not found in local storage. Retrying...");
+      await Future.delayed(Duration(milliseconds: 200)); // small delay
+      return _loadUserRole(); // retry (careful to avoid infinite loop)
+    }
+
+    setState(() {
+      userRole = role;
+      canAccessHome = role == 'Super Admin' || role == 'Admin';
+      isSpecialist = role == 'Specialist';
+      isLoading = false;
+
+      if (isSpecialist) {
+        Future.delayed(Duration.zero, () => context.go('/navigation/bookings'));
+      }
+    });
   }
 
   // ✅ Fetch User Role from Firestore
@@ -44,7 +68,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
           // ✅ Auto-redirect Specialist to 'Test' page
           if (isSpecialist) {
-            Future.delayed(Duration.zero, () => context.go('/navigation/test'));
+            Future.delayed(Duration.zero, () => context.go('/navigation/bookings'));
           }
         });
       } else {
@@ -90,8 +114,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       child: Scaffold(
         backgroundColor: MyColors.white,
         appBar: AppBar(
-          title: const Text('Admin Panel', style: TextStyle(color: Colors.white)),
-          backgroundColor: MyColors.color1,
+          title: const Text('Luminara Admin Panel', style: TextStyle(color: MyColors.color1, fontWeight: FontWeight.bold)),
+          backgroundColor: MyColors.greyLight,
           elevation: 3,
         ),
         body: Row(
@@ -162,17 +186,19 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.article, 'Contents', '/navigation/contents'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Test', '/navigation/test'),
+          // _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
+
           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
+
           _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
+          // _buildSidebarItem(context, Icons.report, 'Reports', '/navigation/reports'),
           _buildLogoutItem(context),
         ];
       case 'Admin':
         return [
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
+          // _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
           _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
@@ -180,7 +206,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         ];
       case 'Specialist':
         return [
-          _buildSidebarItem(context, Icons.video_camera_front, 'Test', '/navigation/test'),
+
           _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
           _buildLogoutItem(context),
         ];

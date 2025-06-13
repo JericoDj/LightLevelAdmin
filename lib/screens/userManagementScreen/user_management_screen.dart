@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
 import 'package:top_snackbar_flutter/custom_snack_bar.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -67,6 +68,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       children: [
                         const Text("Safe Community Access"),
                         Switch(
+                          activeColor: MyColors.color1,
                           value: safeCommunityAccess,
                           onChanged: (value) {
                             setState(() {
@@ -79,10 +81,30 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context),
-                    child: const Text("Cancel")),
-                ElevatedButton(
-                  onPressed: () async {
+                // Cancel Button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: MyColors.color2,
+                      border: Border.all(color: Colors.grey, width: 1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      "Cancel",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Confirm Button (Add / Update)
+                GestureDetector(
+                  onTap: () async {
                     String newCompanyId = companyIdController.text.trim();
                     String companyName = companyNameController.text.trim();
 
@@ -96,20 +118,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       return;
                     }
 
-                    var existingCompany = await _firestore.collection(
-                        "companies").doc(newCompanyId).get();
+                    var existingCompany =
+                    await _firestore.collection("companies").doc(newCompanyId).get();
 
                     if (!existingCompany.exists || companyId != null) {
-                      await _firestore.collection("companies")
-                          .doc(newCompanyId)
-                          .set({
+                      await _firestore.collection("companies").doc(newCompanyId).set({
                         "companyId": newCompanyId,
                         "name": companyName,
                         "role": selectedRole,
-                        // Add role to Firestore
-                        if (selectedRole ==
-                            "User") "safeCommunityAccess": safeCommunityAccess,
-                        // Only save if User
+                        if (selectedRole == "User") "safeCommunityAccess": safeCommunityAccess,
                       });
 
                       Navigator.pop(context);
@@ -129,9 +146,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       );
                     }
                   },
-                  child: Text(companyId == null ? "Add" : "Update"),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: MyColors.color1,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      companyId == null ? "Add" : "Update",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
                 ),
               ],
+
             );
           },
         );
@@ -171,7 +203,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     Text(
                       "$companyName - Users",
                       style: TextStyle(fontWeight: FontWeight.bold,
-                          color: Colors.blue,
+                          color: MyColors.color2,
                           fontSize: 20),
                     ),
                     IconButton(icon: Icon(Icons.close, color: Colors.red),
@@ -237,8 +269,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ElevatedButton.icon(
                   onPressed: () => _showUserDialog(companyId),
                   icon: Icon(Icons.add, color: Colors.white),
-                  label: Text("Add User"),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  label: Text("Add User",style: TextStyle(color: MyColors.white),),
+
+                  style: ElevatedButton.styleFrom(backgroundColor: MyColors.color2),
                 ),
               ],
             ),
@@ -256,7 +289,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Add User"),
+          title: Text("Add User", style: TextStyle(color: MyColors.color2),),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -268,8 +301,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+                style: TextButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context), child: Text("Cancel", style: TextStyle(color: Colors.white),)),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: MyColors.color2),
               onPressed: () async {
                 if (nameController.text.isNotEmpty &&
                     emailController.text.isNotEmpty) {
@@ -289,7 +324,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 }
                 Navigator.pop(context);
               },
-              child: Text("Add User"),
+              child: Text("Add User", style: TextStyle(color: MyColors.white),),
             ),
           ],
         );
@@ -300,8 +335,27 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-          title: Text('User Management'), backgroundColor: Colors.blue),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(50), // <-- set your desired height here
+        child: AppBar(
+          title: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: const Text(
+                'User Management',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24  ,
+                ),
+              ),
+            ),
+          ),
+          backgroundColor: Colors.green[800],
+          elevation: 0,
+        ),
+      ),
+
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -312,7 +366,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               "Companies",
               style: TextStyle(fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue),
+                  color: Colors.black),
             ),
 
             const SizedBox(height: 16),
@@ -342,6 +396,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 5),
                         child: ListTile(
+                          onTap: () => _showUsersDialog(
+                              company["companyId"], company["name"]),
                           title: Text("${company["name"]}"),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,6 +412,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   children: [
                                     const Text("Safe Community Access"),
                                     Switch(
+                                      activeColor: MyColors.color1,
                                       value: safeCommunityAccess,
                                       onChanged: (value) {
                                         _firestore.collection("companies").doc(
@@ -368,13 +425,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 ),
                             ],
                           ),
-                          onTap: () => _showUsersDialog(
-                              company["companyId"], company["name"]),
+
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: Icon(Icons.edit, color: Colors.blue),
+                                icon: Icon(Icons.edit, color: MyColors.color2),
                                 onPressed: () =>
                                     _showCompanyDialog(
                                       companyId: company["companyId"],
@@ -403,8 +459,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ElevatedButton.icon(
               onPressed: () => _showCompanyDialog(),
               icon: Icon(Icons.add, color: Colors.white),
-              label: Text("Add Company"),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              label: Text("Add Company", style: TextStyle(color: MyColors.white),),
+              style: ElevatedButton.styleFrom(backgroundColor: MyColors.color1),
             ),
           ],
         ),

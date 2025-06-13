@@ -149,43 +149,43 @@ class Signaling {
 
 
   Future<void> openUserMedia(
-        RTCVideoRenderer localVideo,
-        RTCVideoRenderer remoteVideo,
-        ) async {
-      var stream = await navigator.mediaDevices
-          .getUserMedia({'video': true, 'audio': false});
+      RTCVideoRenderer localVideo,
+      RTCVideoRenderer remoteVideo,
+      ) async {
+    var stream = await navigator.mediaDevices
+        .getUserMedia({'video': false, 'audio': true});
 
-      localVideo.srcObject = stream;
-      localStream = stream;
+    localVideo.srcObject = stream;
+    localStream = stream;
 
-      remoteVideo.srcObject = await createLocalMediaStream('key');
+    remoteVideo.srcObject = await createLocalMediaStream('key');
+  }
+
+  Future<void> hangUp(RTCVideoRenderer localVideo) async {
+    List<MediaStreamTrack> tracks = localVideo.srcObject!.getTracks();
+    tracks.forEach((track) {
+      track.stop();
+    });
+
+    if (remoteStream != null) {
+      remoteStream!.getTracks().forEach((track) => track.stop());
+    }
+    if (peerConnection != null) peerConnection!.close();
+
+    if (roomId != null) {
+      var db = FirebaseFirestore.instance;
+      var roomRef = db.collection('rooms').doc(roomId);
+      var calleeCandidates = await roomRef.collection('calleeCandidates').get();
+      calleeCandidates.docs.forEach((document) => document.reference.delete());
+
+      var callerCandidates = await roomRef.collection('callerCandidates').get();
+      callerCandidates.docs.forEach((document) => document.reference.delete());
+
+      await roomRef.delete();
     }
 
-    Future<void> hangUp(RTCVideoRenderer localVideo) async {
-      List<MediaStreamTrack> tracks = localVideo.srcObject!.getTracks();
-      tracks.forEach((track) {
-        track.stop();
-      });
-
-      if (remoteStream != null) {
-        remoteStream!.getTracks().forEach((track) => track.stop());
-      }
-      if (peerConnection != null) peerConnection!.close();
-
-      if (roomId != null) {
-        var db = FirebaseFirestore.instance;
-        var roomRef = db.collection('rooms').doc(roomId);
-        var calleeCandidates = await roomRef.collection('calleeCandidates').get();
-        calleeCandidates.docs.forEach((document) => document.reference.delete());
-
-        var callerCandidates = await roomRef.collection('callerCandidates').get();
-        callerCandidates.docs.forEach((document) => document.reference.delete());
-
-        await roomRef.delete();
-      }
-
-      localStream!.dispose();
-      remoteStream?.dispose();
+    localStream!.dispose();
+    remoteStream?.dispose();
   }
 
   void registerPeerConnectionListeners() {

@@ -1,14 +1,13 @@
-
 class Article {
   String title;
-  String body;
-  String sources;
   String thumbnail;
+  List<String> paragraphs;
+  String sources;
 
   Article({
     required this.title,
-    required this.body,
-    required this.sources,
     required this.thumbnail,
+    required this.paragraphs,
+    required this.sources,
   });
 }

@@ -15,7 +15,12 @@ import '../../screens/contentsScreen/popups/mind_hub_articles_popup.dart';
 
 Future<void> showArticleDialog(BuildContext context, List<Article> articles, Article? articleToEdit) async {
   final TextEditingController titleController = TextEditingController(text: articleToEdit?.title);
-  final TextEditingController bodyController = TextEditingController(text: articleToEdit?.body);
+  List<TextEditingController> paragraphControllers = [];
+  if (articleToEdit != null) {
+    paragraphControllers = articleToEdit.paragraphs
+        .map((paragraph) => TextEditingController(text: paragraph))
+        .toList();
+  }
   final TextEditingController sourcesController = TextEditingController(text: articleToEdit?.sources);
   final TextEditingController thumbnailController = TextEditingController(text: articleToEdit?.thumbnail);
 
@@ -35,9 +40,16 @@ Future<void> showArticleDialog(BuildContext context, List<Article> articles, Art
               decoration: InputDecoration(labelText: 'Title'),
             ),
             TextField(
-              controller: bodyController,
-              decoration: InputDecoration(labelText: 'Body'),
+              controller: titleController,
+              decoration: InputDecoration(labelText: 'Title'),
             ),
+            // Display multiple paragraph fields
+            ...paragraphControllers.map((controller) {
+              return TextField(
+                controller: controller,
+                decoration: InputDecoration(labelText: 'Paragraph'),
+              );
+            }).toList(),
             TextField(
               controller: sourcesController,
               decoration: InputDecoration(labelText: 'Sources'),
@@ -114,9 +126,12 @@ Future<void> showArticleDialog(BuildContext context, List<Article> articles, Art
           ),
           TextButton(
             onPressed: () {
+              // Convert the text from the TextEditingController list into a list of paragraphs
+              final List<String> paragraphs = paragraphControllers.map((controller) => controller.text).toList();
+
               final newArticle = Article(
                 title: titleController.text,
-                body: bodyController.text,
+                paragraphs: paragraphs, // Pass the list of paragraphs
                 sources: sourcesController.text,
                 thumbnail: thumbnailController.text,
               );
@@ -134,6 +149,7 @@ Future<void> showArticleDialog(BuildContext context, List<Article> articles, Art
             },
             child: Text(articleToEdit == null ? "Add" : "Save"),
           ),
+
         ],
       );
     },

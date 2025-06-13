@@ -45,7 +45,7 @@ class _CallPageState extends State<CallPage> {
     super.initState();
     Future.delayed(const Duration(milliseconds: 100), () async {
       fbCallService = Provider.of<WebRtcService>(context, listen: false);
-      await openCamera();
+      await openMicrophoneOnly();
       init();
     });
   }
@@ -119,6 +119,25 @@ class _CallPageState extends State<CallPage> {
       debugPrint("************** call_start_page : LN=77 : $e");
     }
   }
+  Future<void> openMicrophoneOnly() async {
+    // await localVideo.initialize(); // Optional, if you still want to render local (empty) video view
+    peerConnection = await fbCallService.createPeer();
+
+    final Map<String, dynamic> mediaConstraints = {
+      'audio': true,
+      'video': false, // <--- Disable video entirely
+    };
+
+    localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+
+    localStream!.getTracks().forEach(
+          (track) async => await peerConnection?.addTrack(track, localStream!),
+    );
+
+    // localVideo.srcObject = localStream; // Optional
+    // setState(() {});
+  }
+
 
   Future<void> openCamera() async {
     await localVideo.initialize();
@@ -135,10 +154,10 @@ class _CallPageState extends State<CallPage> {
 
     localStream!.getTracks().forEach(
           (track) async => await peerConnection?.addTrack(
-            track,
-            localStream!,
-          ),
-        );
+        track,
+        localStream!,
+      ),
+    );
     localVideo.srcObject = localStream;
     setState(() {});
   }
@@ -147,14 +166,14 @@ class _CallPageState extends State<CallPage> {
     try {
       peerConnection!.onIceConnectionState = (iceConnectionState) async {
         if ((peerConnection!.iceConnectionState ==
-                RTCIceConnectionState.RTCIceConnectionStateConnected ||
+            RTCIceConnectionState.RTCIceConnectionStateConnected ||
             peerConnection!.iceConnectionState ==
                 RTCIceConnectionState.RTCIceConnectionStateCompleted)) {
           _connectingLoadingComplated();
         }
 
         if (iceConnectionState ==
-                RTCIceConnectionState.RTCIceConnectionStateDisconnected ||
+            RTCIceConnectionState.RTCIceConnectionStateDisconnected ||
             iceConnectionState ==
                 RTCIceConnectionState.RTCIceConnectionStateFailed) {
           // The other person left the chat or was disconnected.

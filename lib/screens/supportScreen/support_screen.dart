@@ -176,7 +176,26 @@ class _SupportScreenState extends State<SupportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Customer Support Management')),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(50), // <-- set your desired height here
+        child: AppBar(
+          title: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: const Text(
+                'Customer Support Management',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24  ,
+                ),
+              ),
+            ),
+          ),
+          backgroundColor: Colors.green[800],
+          elevation: 0,
+        ),
+      ),
       body: Column(
         children: [
           const SizedBox(height: 12),

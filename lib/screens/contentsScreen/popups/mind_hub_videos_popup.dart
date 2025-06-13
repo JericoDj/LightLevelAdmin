@@ -244,7 +244,7 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
                         title: titleController.text,
                         description: descriptionController.text,
                         thumbnail: thumbnailUrl ?? '',
-                        videoFile: videoUrl ?? '',
+                        videoFile: videoUrl ?? '', url: '',
                       );
 
                       if (videoToEdit == null) {
