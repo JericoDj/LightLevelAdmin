@@ -55,18 +55,16 @@ final GoRouter router = GoRouter(
     ),
 
     // ✅ Call Route for Talk Sessions
-
-    // ✅ New Support Call Route
-
-
-    // ✅ Chat Route
     GoRoute(
-      path: '/navigation/chat/:userId/:fullName/:companyId',
+      path: '/navigation/talk/:userId/:roomId',
       builder: (context, state) {
         final String userId = state.pathParameters['userId'] ?? "";
-        final String fullName = state.pathParameters['fullName'] ?? "";
-        final String companyId = state.pathParameters['companyId'] ?? "";
-        return ChatScreen(userId: userId ,fullName: fullName, companyId: companyId);
+        final String roomId = state.pathParameters['roomId'] ?? "";
+
+        return SupportsCallPage(
+          roomId: roomId,
+          isCaller: false,
+        );
       },
     ),
 
@@ -80,6 +78,28 @@ final GoRouter router = GoRouter(
 
         return SupportsCallPage(roomId: roomId, isCaller: isCaller);
 
+      },
+    ),
+
+    // ✅ New Support Call Route
+    GoRoute(
+      path: '/navigation/chat/:userId/:fullName/:companyId',
+      builder: (context, state) {
+        final String userId = state.pathParameters['userId'] ?? "";
+        final String fullName = state.pathParameters['fullName'] ?? "";
+        final String companyId = state.pathParameters['companyId'] ?? "";
+        return ChatScreen(userId: userId ,fullName: fullName, companyId: companyId);
+      },
+    ),
+
+    // ✅ Chat Route
+    GoRoute(
+      path: '/navigation/chat/:userId/:fullName/:companyId',
+      builder: (context, state) {
+        final String userId = state.pathParameters['userId'] ?? "";
+        final String fullName = state.pathParameters['fullName'] ?? "";
+        final String companyId = state.pathParameters['companyId'] ?? "";
+        return ChatScreen(userId: userId ,fullName: fullName, companyId: companyId);
       },
     ),
 
@@ -98,8 +118,6 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
         GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
         GoRoute(path: '/navigation/community', builder: (context, state) => CommunityScreen()),
-
-
 
         //Reports Routes
         GoRoute(

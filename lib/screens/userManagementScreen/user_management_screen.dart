@@ -1,9 +1,13 @@
+
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
 import 'package:top_snackbar_flutter/custom_snack_bar.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
+
+import '../../utils/user_storage.dart';
 
 class UserManagementScreen extends StatefulWidget {
   @override
@@ -226,6 +230,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         itemCount: users.length,
                         itemBuilder: (context, index) {
                           var user = users[index];
+
                           return Card(
                             margin: const EdgeInsets.symmetric(vertical: 5),
                             child: ListTile(
@@ -235,29 +240,124 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: Icon(user["isActive"]
-                                        ? Icons.check_circle
-                                        : Icons.cancel, color: Colors.green),
-                                    onPressed: () {
-                                      _firestore.collection("companies").doc(
-                                          companyId).collection("users").doc(
-                                          user.id).update({
-                                        "isActive": !user["isActive"],
-                                      });
+                                    icon: Icon(
+                                      user["isActive"] ? Icons.check_circle : Icons.cancel,
+                                      color: Colors.green,
+                                    ),
+                                    onPressed: () async {
+                                      final String email = user["email"];
+                                      print("📧 Email: $email");
+                                      final bool newStatus = !user["isActive"];
+
+                                      // 🔄 Update company user `isActive` status
+                                      await _firestore
+                                          .collection("companies")
+                                          .doc(companyId)
+                                          .collection("users")
+                                          .doc(user.id)
+                                          .update({"isActive": newStatus});
+
+                                      // 🔄 Find user in top-level `users/` collection
+                                      final userQuery = await _firestore
+                                          .collection("users")
+                                          .where("email", isEqualTo: email)
+                                          .where("companyId", isEqualTo: companyId)
+                                          .limit(1)
+                                          .get();
+
+                                      if (userQuery.docs.isNotEmpty) {
+                                        final userDoc = userQuery.docs.first;
+                                        final userDocId = userDoc.id;
+                                        final currentAccess = userDoc.data()["access"] ?? true;
+
+                                        // 🟢 Toggle access
+                                        final newAccess = !currentAccess;
+
+                                        print("🧾 Current access: $currentAccess → New access: $newAccess");
+
+                                        await _firestore
+                                            .collection("users")
+                                            .doc(userDocId)
+                                            .update({"access": newAccess});
+                                      } else {
+                                        print("⚠️ No matching user found in top-level 'users' collection.");
+                                      }
                                     },
                                   ),
+
                                   IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () {
-                                      _firestore.collection("companies").doc(
-                                          companyId).collection("users").doc(
-                                          user.id).delete();
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () async {
+                                      final bool? confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (BuildContext dialogContext) {
+                                          return AlertDialog(
+                                            title: const Text("Confirm Deletion"),
+                                            content: const Text("Are you sure you want to delete this user?"),
+                                            actions: [
+                                              TextButton(
+                                                child: const Text("Cancel"),
+                                                onPressed: () => Navigator.of(dialogContext).pop(false),
+                                              ),
+                                              TextButton(
+                                                child: const Text("Delete", style: TextStyle(color: Colors.red)),
+                                                onPressed: () => Navigator.of(dialogContext).pop(true),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+
+                                      if (confirm == true) {
+                                        final String email = user["email"];
+
+                                        // Step 1: Delete from companies/{companyId}/users
+                                        await _firestore
+                                            .collection("companies")
+                                            .doc(companyId)
+                                            .collection("users")
+                                            .doc(user.id)
+                                            .delete();
+
+                                        // ✅ Debug log before Step 2
+                                        debugPrint("🟡 Proceeding to global users query with:");
+                                        debugPrint("📧 Email: $email");
+                                        debugPrint("🏢 Company ID: $companyId");
+
+                                        // Step 2: Find and delete from global users collection
+                                        final userQuery = await _firestore
+                                            .collection("users")
+                                            .where("email", isEqualTo: email)
+                                            .where("companyId", isEqualTo: companyId)
+                                            .limit(1)
+                                            .get();
+
+                                        if (userQuery.docs.isNotEmpty) {
+                                          final userDoc = userQuery.docs.first;
+                                          final uid = userDoc["uid"];
+                                          final docId = userDoc.id;
+
+                                          debugPrint("🟢 Step 3: Ready to delete from Firebase Auth");
+                                          debugPrint("📄 Firestore docId: $docId");
+                                          debugPrint("🔐 UID to delete: $uid");
+
+                                          await _deleteUser(context, uid, docId); // pass context to _deleteUser
+                                        } else {
+                                          debugPrint("🔴 No matching document found in global users collection.");
+                                        }
+                                      }
                                     },
                                   ),
+
+
+
+
+
                                 ],
                               ),
                             ),
                           );
+
                         },
                       );
                     },
@@ -279,6 +379,67 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         );
       },
     );
+  }
+
+
+  Future<void> _deleteUser(BuildContext context, String uid, String docId) async {
+    try {
+      final String currentUserUid = UserStorage.getUser()?['uid'] ?? '';
+
+      if (uid == currentUserUid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("You can't delete your own admin account."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      const String functionUrl = "https://deleteuseraccount-zesi6puwbq-uc.a.run.app";
+      final dio.Dio httpClient = dio.Dio();
+
+      debugPrint("📡 Calling delete function: $functionUrl");
+      debugPrint("🧾 Sending UID: $uid");
+
+      final response = await httpClient.post(
+        functionUrl,
+        data: {"uid": uid},
+        options: dio.Options(
+          headers: {
+            "Content-Type": "application/json",
+          },
+        ),
+      );
+
+      debugPrint("📡 Response: ${response.statusCode} - ${response.data}");
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        await FirebaseFirestore.instance.collection("users").doc(docId).delete();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("User deleted successfully."),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to delete user: ${response.data}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("🔥 Deletion Exception: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Unexpected error: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showUserDialog(String companyId) {
