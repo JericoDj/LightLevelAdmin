@@ -186,7 +186,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.article, 'Contents', '/navigation/contents'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
-          // _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
 
           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
 

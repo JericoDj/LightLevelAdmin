@@ -4,7 +4,9 @@ import '../callPage/components/join_room_bottom_sheet.dart';
 import 'components/custom_button.dart';
 
 class HomePage2 extends StatefulWidget {
-  const HomePage2({super.key});
+   const HomePage2({super.key, this.roomId});
+
+  final roomId;
 
   @override
   State<HomePage2> createState() => _HomePageState();
@@ -38,7 +40,7 @@ class _HomePageState extends State<HomePage2> {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => CallPage(
+                        builder: (context) => SupportsCallPage(
                           roomId: null,
                           isCaller: true,
                         ),

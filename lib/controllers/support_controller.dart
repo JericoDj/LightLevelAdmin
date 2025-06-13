@@ -25,8 +25,12 @@ class SupportController {
         var data = snapshot.data() as Map<String, dynamic>;
         String? supportRoom = data['roomId'];
 
+        print("printing na");
+        print(userId);
+        print(supportRoom);
+
         if (supportRoom != null && supportRoom.isNotEmpty) {
-          GoRouter.of(context).push('/navigation/support/$userId/$supportRoom');
+          GoRouter.of(context).push('/navigation/support/$supportRoom/$userId');
         } else {
           print("❌ No valid supportRoom found for user: $userId");
         }

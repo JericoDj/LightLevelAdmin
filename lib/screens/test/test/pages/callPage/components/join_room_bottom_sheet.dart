@@ -61,12 +61,12 @@ Future<void> joinRoomBottomSheet(BuildContext context) {
                 text: "Join Room",
                 onTap: () async {
                   try {
-                    String roomId = textEditingController.text.trim();
 
+                    String roomId = textEditingController.text.trim();
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => CallPage(
+                        builder: (context) => SupportsCallPage(
                           roomId: roomId,
                           isCaller: false,
                         ),

@@ -55,29 +55,9 @@ final GoRouter router = GoRouter(
     ),
 
     // ✅ Call Route for Talk Sessions
-    GoRoute(
-      path: '/navigation/talk/:userId/:roomId',
-      builder: (context, state) {
-        final String userId = state.pathParameters['userId'] ?? "";
-        final String roomId = state.pathParameters['roomId'] ?? "";
-
-        return CallPage(
-          roomId: roomId,
-          isCaller: false,
-        );
-      },
-    ),
 
     // ✅ New Support Call Route
-    GoRoute(
-      path: '/navigation/chat/:userId/:fullName/:companyId',
-      builder: (context, state) {
-        final String userId = state.pathParameters['userId'] ?? "";
-        final String fullName = state.pathParameters['fullName'] ?? "";
-        final String companyId = state.pathParameters['companyId'] ?? "";
-        return ChatScreen(userId: userId ,fullName: fullName, companyId: companyId);
-      },
-    ),
+
 
     // ✅ Chat Route
     GoRoute(
@@ -87,6 +67,19 @@ final GoRouter router = GoRouter(
         final String fullName = state.pathParameters['fullName'] ?? "";
         final String companyId = state.pathParameters['companyId'] ?? "";
         return ChatScreen(userId: userId ,fullName: fullName, companyId: companyId);
+      },
+    ),
+
+    GoRoute(
+      path: '/navigation/support/:roomId/:isCaller',
+      builder: (context, state) {
+        final roomId = state.pathParameters['roomId'] ?? '';
+        final isCaller = state.pathParameters['isCaller'] == 'false';
+        print(roomId);
+        print(isCaller);
+
+        return SupportsCallPage(roomId: roomId, isCaller: isCaller);
+
       },
     ),
 
@@ -105,6 +98,8 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
         GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
         GoRoute(path: '/navigation/community', builder: (context, state) => CommunityScreen()),
+
+
 
         //Reports Routes
         GoRoute(

@@ -7,23 +7,23 @@ import 'package:provider/provider.dart';
 import '../../services/webrtc_service.dart';
 import 'components/call_page_widget.dart';
 
-class CallPage extends StatefulWidget {
+class SupportsCallPage extends StatefulWidget {
   String? roomId;
   bool isCaller;
 
   /// if 'roomId' = null; new call will be made.
   /// if 'roomId' != null; will join the room.
-  CallPage({
+  SupportsCallPage({
     Key? key,
     required this.roomId,
     required this.isCaller,
   }) : super(key: key);
 
   @override
-  State<CallPage> createState() => _CallPageState();
+  State<SupportsCallPage> createState() => _CallPageState();
 }
 
-class _CallPageState extends State<CallPage> {
+class _CallPageState extends State<SupportsCallPage> {
   late FirebaseFirestore videoapp;
   late WebRtcService fbCallService;
 
