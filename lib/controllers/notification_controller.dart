@@ -2,116 +2,91 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NotificationController extends GetxController {
-  static const String _fcmUrl = 'https://fcm.googleapis.com/v1/projects/llps-mentalapp/messages:send';
+  static const String _cloudFunctionUrl = 'https://sendadminnotification-zesi6puwbq-uc.a.run.app'; // Your deployed HTTPS function
 
-  // **Generate an OAuth 2.0 access token for Firebase Cloud Messaging**
-  Future<String?> getAccessToken() async {
-    try {
-      // Load service account credentials from assets
-      final serviceAccount = await rootBundle.loadString('/generated.json');
-      final serviceAccountJson = json.decode(serviceAccount);
-      final accountCredentials = ServiceAccountCredentials.fromJson(serviceAccountJson);
-
-      final authClient = await clientViaServiceAccount(
-        accountCredentials,
-        ['https://www.googleapis.com/auth/firebase.messaging'],
-      );
-
-      return authClient.credentials.accessToken.data;
-    } catch (e) {
-      print("❌ Error getting access token: $e");
-      return null;
-    }
+  @override
+  void onInit() {
+    super.onInit();
+    print("🔄 NotificationController initialized");
   }
 
-  // **Fetch all FCM tokens from Firestore**
+  /// ✅ Fetch all FCM tokens from Firestore
   Future<List<String>> getAllFcmTokens() async {
-    List<String> fcmTokens = [];
+    print("📡 Fetching all FCM tokens from Firestore...");
+    List<String> tokens = [];
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('users').get();
+      final snapshot = await FirebaseFirestore.instance.collection('users').get();
 
       for (var doc in snapshot.docs) {
-        var data = doc.data() as Map<String, dynamic>?;
+        final data = doc.data() as Map<String, dynamic>?;
+        final token = data?['fcmToken'];
 
-        if (data != null && data.containsKey('fcmToken') && data['fcmToken'] != null) {
-          String fcmToken = data['fcmToken'];
-          fcmTokens.add(fcmToken);
-          print("✅ FCM Token found for user ${doc.id}: $fcmToken");
+        if (token != null && token is String && token.isNotEmpty) {
+          tokens.add(token);
+          print("✅ Token for user ${doc.id}: $token");
         } else {
-          print("⚠️ No valid FCM token for user ${doc.id}, skipping...");
+          print("⚠️ No valid token for user ${doc.id}, skipping...");
         }
       }
+
+      print("🔢 Total tokens found: ${tokens.length}");
     } catch (e) {
-      print('❌ Error fetching FCM tokens: $e');
+      print("❌ Error fetching FCM tokens: $e");
     }
-    return fcmTokens;
+    return tokens;
   }
 
-  // **Send notification to a single FCM token**
+  /// ✅ Send notification to a single device using Firebase Function
   Future<void> sendNotificationToToken(String fcmToken, String title, String body) async {
-    // Prepare the message data
-    final message = {
-      'message': {
-        'token': fcmToken,
-        'notification': {
-          'title': title,
-          'body': body,
-        },
-      },
-    };
+    print("📨 Sending notification to token: $fcmToken");
 
     try {
-      // Get access token
-      final accessToken = await getAccessToken();
-      if (accessToken == null) {
-        print("❌ Failed to get access token. Aborting notification.");
-        return;
-      }
-
-      // Send the notification to the specified FCM token
       final response = await http.post(
-        Uri.parse(_fcmUrl),
+        Uri.parse(_cloudFunctionUrl),
         headers: {
-          'Authorization': 'Bearer $accessToken',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(message),
+        body: jsonEncode({
+          'token': fcmToken,
+          'title': title,
+          'body': body,
+        }),
       );
 
-      // Handle the response
       if (response.statusCode == 200) {
         print("✅ Notification sent to $fcmToken");
       } else {
-        print("❌ Failed to send notification to $fcmToken: ${response.body}");
+        print("❌ Failed to send notification to $fcmToken");
+        print("🔴 Status Code: ${response.statusCode}");
+        print("📄 Body: ${response.body}");
       }
     } catch (e) {
-      print("❌ Error sending notification to $fcmToken: $e");
+      print("❌ Exception during send to $fcmToken: $e");
     }
   }
 
-  // **Send notification to all users**
+  /// ✅ Send notification to all users
   Future<void> sendNotificationToAllUsers(String title, String body) async {
+    print("🚀 Sending notification to all users...");
     try {
-      List<String> fcmTokens = await getAllFcmTokens();
+      final tokens = await getAllFcmTokens();
 
-      if (fcmTokens.isEmpty) {
-        print("⚠️ No valid FCM tokens found. Skipping notifications.");
+      if (tokens.isEmpty) {
+        print("⚠️ No tokens available. Abort sending.");
         return;
       }
 
-      // Send notifications to each token
-      for (String token in fcmTokens) {
+      for (String token in tokens) {
         await sendNotificationToToken(token, title, body);
       }
 
-      print('📲 ✅ Notifications sent to all users!');
+      print("📲 ✅ Notifications sent to all users");
     } catch (e) {
-      print('❌ Error sending notifications: $e');
+      print("❌ Error sending notifications to all users: $e");
     }
   }
 }
