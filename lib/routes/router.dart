@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/bookingsScreen/bookingsScreen.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/forgotPasswordScreen/forgotPasswordScreen.dart';
@@ -39,6 +40,24 @@ final GoRouter router = GoRouter(
 
 
   initialLocation: '/login',
+  redirect: (context, state) {
+    final user = GetStorage().read('user');
+
+    final userRole = GetStorage().read('user_role');
+
+    final isLoggedIn = user != null && user['uid'] != null;
+    final isLoginPage = state.matchedLocation == '/login';
+
+    if (!isLoggedIn && !isLoginPage) {
+      return '/login';
+    }
+
+    if (isLoggedIn && isLoginPage) {
+      return '/navigation/home';
+    }
+
+    return null;
+  },
   routes: [
     // ✅ Login Routes
     GoRoute(
@@ -73,8 +92,6 @@ final GoRouter router = GoRouter(
       builder: (context, state) {
         final roomId = state.pathParameters['roomId'] ?? '';
         final isCaller = state.pathParameters['isCaller'] == 'false';
-        print(roomId);
-        print(isCaller);
 
         return SupportsCallPage(roomId: roomId, isCaller: isCaller);
 

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/user_storage.dart';
@@ -34,7 +35,6 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
     if (role == null) {
       // Optionally fetch from Firestore if needed or wait a bit
-      print("⚠️ Role not found in local storage. Retrying...");
       await Future.delayed(Duration(milliseconds: 200)); // small delay
       return _loadUserRole(); // retry (careful to avoid infinite loop)
     }
@@ -165,16 +165,28 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
             Expanded(
               flex: 8,
               child: isLoading
-                  ? const Center(child: CircularProgressIndicator()) // ✅ Loading indicator
+                  ? const Center(child: CircularProgressIndicator()) // ⏳ Show loading
+                  : (userRole == null)
+                  ? _noUserFoundWidget() // ❌ Handle no user case
                   : (userRole == 'Super Admin' || userRole == 'Admin' || isSpecialist)
-                  ? widget.child // ✅ Show content for Admin/Super Admin/Specialist
-                  : _restrictedAccessWidget(), // ❌ Restricted view for unknown roles
+                  ? widget.child // ✅ Authorized access
+                  : _restrictedAccessWidget(), // ❌ Unauthorized access
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _noUserFoundWidget() {
+    return const Center(
+      child: Text(
+        'No user found. Please log in again.',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.red),
+      ),
+    );
+  }
+
 
   /// Dynamic Sidebar Items Based on Role
   List<Widget> _buildSidebarItems(BuildContext context) {
@@ -262,7 +274,10 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     return GestureDetector(
       onTap: () async {
         await FirebaseAuth.instance.signOut();
+        final storage = GetStorage();
+        await storage.erase(); // 🔥 Clears all stored keys like 'user' and 'user_role'
         context.go('/login');
+
       },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
