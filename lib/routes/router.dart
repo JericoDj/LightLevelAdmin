@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,7 @@ import '../screens/contentsScreen/insightquest.dart';
 import '../screens/contentsScreen/popups/mindHubContentScreen.dart';
 import '../screens/contentsScreen/popups/mind_hub_articles_popup.dart';
 import '../screens/contentsScreen/video_contents_screen.dart';
+import '../screens/dataAnalyticsScreen/DataAnalytics.dart';
 import '../screens/homescreen/homeScreen.dart';
 import '../screens/loginScreen/loginScreen.dart';
 import '../screens/reports/ReportsScreen.dart';
@@ -77,24 +79,53 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/navigation/talk/:userId/:roomId',
       builder: (context, state) {
-        final String roomId = state.pathParameters['roomId'] ?? "";
+        final String roomId = state.pathParameters['roomId'] ?? '';
+        final String userId = state.pathParameters['userId'] ?? '';
 
-        return SupportsCallPage(
-          roomId: roomId,
-          isCaller: false,
+        return FutureBuilder(
+          future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
 
+            if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+              return const Scaffold(
+                body: Center(child: Text('❌ User data not found.')),
+              );
+            }
+
+            final data = snapshot.data!.data() as Map<String, dynamic>;
+
+            return SupportsCallPage(
+              roomId: roomId,
+              isCaller: false,
+              fullName: data['fullName'] ?? '',
+              companyId: data['companyId'] ?? '',
+              startedAt: DateTime.now(),
+            );
+          },
         );
       },
     ),
+
 
     GoRoute(
       path: '/navigation/support/:roomId/:isCaller',
       builder: (context, state) {
         final roomId = state.pathParameters['roomId'] ?? '';
-        final isCaller = state.pathParameters['isCaller'] == 'false';
+        final isCaller = state.pathParameters['isCaller'] == 'true';
+        final extra = state.extra as Map<String, dynamic>?;
 
-        return SupportsCallPage(roomId: roomId, isCaller: isCaller);
-
+        return SupportsCallPage(
+          roomId: roomId,
+          isCaller: isCaller,
+          fullName: extra?['fullName'] ?? '',
+          companyId: extra?['companyId'] ?? '',
+          startedAt: extra?['startedAt'] ?? DateTime.now(),
+        );
       },
     ),
 
@@ -135,6 +166,10 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
         GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
         GoRoute(path: '/navigation/community', builder: (context, state) => CommunityScreen()),
+        GoRoute(
+          path: '/navigation/dataanalytics',
+          builder: (context, state) => DataAnalyticsReportScreen(),
+        ),
 
         //Reports Routes
         GoRoute(

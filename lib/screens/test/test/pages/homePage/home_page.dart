@@ -1,12 +1,22 @@
 import "package:flutter/material.dart";
+import 'package:go_router/go_router.dart';
 import '../callPage/call_page.dart';
 import '../callPage/components/join_room_bottom_sheet.dart';
 import 'components/custom_button.dart';
 
 class HomePage2 extends StatefulWidget {
-   const HomePage2({super.key, this.roomId});
+  final String userId;
+  final String roomId;
+  final String fullName;
+  final String companyId;
 
-  final roomId;
+  const HomePage2({
+    super.key,
+    required this.userId,
+    required this.roomId,
+    required this.fullName,
+    required this.companyId,
+  });
 
   @override
   State<HomePage2> createState() => _HomePageState();
@@ -38,13 +48,13 @@ class _HomePageState extends State<HomePage2> {
                 child: CustomButton(
                   text: "New Room",
                   onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => SupportsCallPage(
-                          roomId: null,
-                          isCaller: true,
-                        ),
-                      ),
+                    context.push(
+                      '/navigation/talk/${widget.userId}/${widget.roomId}',
+                      extra: {
+                        'companyId': widget.companyId,
+                        'fullName': widget.fullName,
+                        'startedAt': DateTime.now(),
+                      },
                     );
                   },
                 ),
@@ -56,7 +66,12 @@ class _HomePageState extends State<HomePage2> {
                   buttonColor: Colors.white,
                   textColor: Colors.blue.shade600,
                   onTap: () {
-                    joinRoomBottomSheet(context);
+                    joinRoomBottomSheet(
+                      context,
+                      userId: widget.userId,
+                      companyId: widget.companyId,
+                      fullName: widget.fullName,
+                    );
                   },
                 ),
               ),

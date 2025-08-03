@@ -110,7 +110,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final timestamp = DateTime.now();
       final reportRef = FirebaseFirestore.instance
           .collection("reports")
-          .doc("sessions")
+          .doc("chatSessions")
           .collection(widget.companyId)
           .doc("chats")
           .collection(widget.fullName)

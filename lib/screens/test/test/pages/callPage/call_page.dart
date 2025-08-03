@@ -10,11 +10,17 @@ import 'components/call_page_widget.dart';
 class SupportsCallPage extends StatefulWidget {
   String? roomId;
   bool isCaller;
+  final String fullName;
+  final String companyId;
+  final DateTime startedAt;
 
   SupportsCallPage({
     Key? key,
     required this.roomId,
     required this.isCaller,
+    required this.fullName,
+    required this.companyId,
+    required this.startedAt,
   }) : super(key: key);
 
   @override
@@ -182,12 +188,44 @@ class _CallPageState extends State<SupportsCallPage> {
     }
   }
 
-  void _leaveCall() {
+  void _leaveCall() async {
+    final endedAt = DateTime.now();
+    final duration = endedAt.difference(widget.startedAt);
+
+    try {
+      print("Saving to Firestore:");
+      print("companyId: ${widget.companyId}");
+      print("fullName: ${widget.fullName}");
+      print("roomId: ${widget.roomId}");
+
+      await FirebaseFirestore.instance
+          .collection('reports')
+          .doc('talkSession')
+          .collection(widget.companyId)
+          .doc(widget.fullName)
+          .collection('sessions')
+          .doc(endedAt.toIso8601String())
+          .set({
+        'companyId': widget.companyId,
+        'fullName': widget.fullName,
+        'timestampStarted': widget.startedAt,
+        'timestampEnded': endedAt,
+        'durationInSeconds': duration.inSeconds,
+        'durationFormatted': "${duration.inMinutes} min ${duration.inSeconds % 60} sec",
+      });
+
+      print("✅ Talk session saved");
+    } catch (e) {
+      print("❌ Error saving talk session: $e");
+    }
+
     if (mounted) {
       Navigator.pop(context);
       fbCallService.deleteFirebaseDoc(roomId: widget.roomId ?? "");
     }
   }
+
+
 
   @override
   void dispose() {

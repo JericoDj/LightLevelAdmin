@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../homePage/components/custom_button.dart';
 import '../call_page.dart';
 
-Future<void> joinRoomBottomSheet(BuildContext context) {
+Future<void> joinRoomBottomSheet(
+    BuildContext context, {
+      required String userId,
+      required String companyId,
+      required String fullName,
+    }) {
+
   final textEditingController = TextEditingController();
 
   return showModalBottomSheet(
@@ -64,13 +71,13 @@ Future<void> joinRoomBottomSheet(BuildContext context) {
 
                     String roomId = textEditingController.text.trim();
                     Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => SupportsCallPage(
-                          roomId: roomId,
-                          isCaller: false,
-                        ),
-                      ),
+                    context.push(
+                      '/navigation/talk/$userId/$roomId',
+                      extra: {
+                        'companyId': companyId,
+                        'fullName': fullName,
+                        'startedAt': DateTime.now(),
+                      },
                     );
                   } catch (e) {
                     debugPrint("$e");

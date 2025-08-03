@@ -1,10 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 class VideoCallScreen extends StatefulWidget {
   final String roomId;
+  final String companyId;
+  final String fullName;
+  final DateTime startedAt;
 
-  const VideoCallScreen({Key? key, required this.roomId}) : super(key: key);
+  const VideoCallScreen({Key? key,
+    required this.roomId,
+    required this.companyId,
+    required this.fullName,
+    required this.startedAt,}) : super(key: key);
 
   @override
   _VideoCallScreenState createState() => _VideoCallScreenState();
@@ -42,9 +50,35 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     });
   }
 
-  void _endCall() {
+  void _endCall() async {
+    final endedAt = DateTime.now();
+    final duration = endedAt.difference(widget.startedAt);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('report')
+          .doc('talkSession')
+          .collection(widget.companyId)
+          .doc('talks')
+          .collection(widget.fullName)
+          .doc(endedAt.toIso8601String()) // timestamp doc id
+          .set({
+        'companyId': widget.companyId,
+        'fullName': widget.fullName,
+        'timestampStarted': widget.startedAt,
+        'timestampEnded': endedAt,
+        'durationInSeconds': duration.inSeconds,
+        'durationFormatted': "${duration.inMinutes} mins ${duration.inSeconds % 60} secs",
+      });
+
+      print('✅ Talk session report saved!');
+    } catch (e) {
+      print('❌ Failed to save talk report: $e');
+    }
+
     Navigator.pop(context);
   }
+
 
   void _showParticipantsDialog() {
     showDialog(

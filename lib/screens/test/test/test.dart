@@ -34,7 +34,12 @@ class TestApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: const HomePage2(),
+        home: const HomePage2(
+          userId: 'testUser123',
+          roomId: 'testRoom456',
+          fullName: 'Test User',
+          companyId: 'testCompany789',
+        ),
       ),
     );
   }
