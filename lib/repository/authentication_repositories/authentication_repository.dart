@@ -44,9 +44,11 @@ class AuthRepository extends GetxController {
           // ✅ Route based on role
           if (role == 'Specialist') {
             context.go('/navigation/bookings');
+          } else if (role == 'Corporate') {
+            context.go('/navigation/dataanalytics');
           } else if (role == 'Super Admin' || role == 'Admin') {
-
             context.go('/navigation/home');
+
           } else {
             await _auth.signOut();
             UserStorage.clearUser();

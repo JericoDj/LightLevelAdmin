@@ -44,18 +44,17 @@ final GoRouter router = GoRouter(
   initialLocation: '/login',
   redirect: (context, state) {
     final user = GetStorage().read('user');
-
-    final userRole = GetStorage().read('user_role');
-
     final isLoggedIn = user != null && user['uid'] != null;
     final isLoginPage = state.matchedLocation == '/login';
+    final isSignUpPage = state.matchedLocation == '/sign-up';
+    final isForgotPasswordPage = state.matchedLocation == '/forgot-password';
 
-    if (!isLoggedIn && !isLoginPage) {
-      return '/login';
+    if (!isLoggedIn && !isLoginPage && !isSignUpPage && !isForgotPasswordPage) {
+      return '/login'; // ✅ Only block protected routes
     }
 
-    if (isLoggedIn && isLoginPage) {
-      return '/navigation/home';
+    if (isLoggedIn && (isLoginPage || isSignUpPage || isForgotPasswordPage)) {
+      return '/navigation/home'; // ✅ Redirect logged-in users away from auth screens
     }
 
     return null;
@@ -162,6 +161,7 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/navigation/sessions', builder: (context, state) => SessionsScreen()),
         GoRoute(path: '/navigation/support', builder: (context, state) => SupportScreen()),
         GoRoute(path: '/navigation/bookings', builder: (context, state) => BookingsScreen()),
+
         GoRoute(path: '/navigation/test', builder: (context, state) => TestApp()),
         GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
         GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),

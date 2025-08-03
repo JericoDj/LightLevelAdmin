@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 class StressReportWidget extends StatelessWidget {
   final String stressTrend;
   final Map<String, int> stressCounts;
   final String company;
   final List<String> selectedUsers;
+  final Map<String, Map<String, dynamic>> userContributions;
 
   const StressReportWidget({
     super.key,
@@ -13,6 +15,7 @@ class StressReportWidget extends StatelessWidget {
     required this.stressCounts,
     required this.company,
     required this.selectedUsers,
+    required this.userContributions,
   });
 
   @override
@@ -62,10 +65,100 @@ class StressReportWidget extends StatelessWidget {
 
           // ✅ Color Legend
           _buildLegend(),
+          const SizedBox(height: 24),
+          _buildUserBreakdown(userContributions),
         ],
       ),
     );
   }
+  Widget _buildUserBreakdown(Map<String, Map<String, dynamic>> userContributions) {
+    if (userContributions.isEmpty) return const SizedBox();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '👥 User Contributions',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 16),
+          ...userContributions.entries.map((entry) {
+            final user = entry.key;
+            final data = entry.value;
+            final average = (data['average'] as double).toStringAsFixed(1);
+            final entries = data['entries'] as List;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '👤 $user',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '📊 Average Stress Level: $average',
+                    style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 10),
+                  ...entries.map<Widget>((entry) {
+                    final dateStr = entry['date'] ?? '';
+                    final displayDate = _formatDate(dateStr);
+                    final value = entry['value'];
+                    final label = _getStressLabel(value);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today, size: 14, color: Colors.black54),
+                          const SizedBox(width: 6),
+                          Text('$displayDate — Stress Level: $value ($label)'),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+  String _getStressLabel(int value) {
+    if (value <= 40) return 'Low';
+    if (value <= 70) return 'Moderate';
+    return 'High';
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      return DateFormat('MMMM d').format(date); // e.g. August 2
+    } catch (_) {
+      return dateStr; // fallback to raw string if parsing fails
+    }
+  }
+
+
+
 
   String _getGeneratedForText() {
     if (selectedUsers.length == 1) {
@@ -123,6 +216,9 @@ class StressReportWidget extends StatelessWidget {
             _LegendItem(color: Colors.redAccent, label: 'High (80–100)'),
           ],
         ),
+
+
+
       ],
     );
   }

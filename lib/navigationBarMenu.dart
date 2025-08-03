@@ -168,7 +168,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                   ? const Center(child: CircularProgressIndicator()) // ⏳ Show loading
                   : (userRole == null)
                   ? _noUserFoundWidget() // ❌ Handle no user case
-                  : (userRole == 'Super Admin' || userRole == 'Admin' || isSpecialist)
+                  : (userRole == 'Super Admin' || userRole == 'Admin' || userRole== "Corporate"|| isSpecialist)
                   ? widget.child // ✅ Authorized access
                   : _restrictedAccessWidget(), // ❌ Unauthorized access
             ),
@@ -223,6 +223,13 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
           _buildLogoutItem(context),
         ];
+      case 'Corporate':
+        return [
+
+
+          _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics', '/navigation/dataanalytics'),
+          _buildLogoutItem(context),
+        ];;
       default: // For 'User'
         return [
           _buildLogoutItem(context),

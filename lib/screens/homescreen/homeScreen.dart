@@ -101,11 +101,14 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(50),
         child: AppBar(
-          title: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Text(
-              'Admin Dashboard',
-              style: TextStyle(color: Colors.white, fontSize: 24),
+          title: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Text(
+                'Admin Dashboard',
+                style: TextStyle(color: Colors.white, fontSize: 24),
+              ),
             ),
           ),
           backgroundColor: Colors.green[800],

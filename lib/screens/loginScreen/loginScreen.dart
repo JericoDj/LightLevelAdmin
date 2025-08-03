@@ -168,7 +168,7 @@ class LoginScreen extends StatelessWidget {
                         const Text("Don't have an account? "),
                         GestureDetector(
                           onTap: () {
-                            context.push('/sign-up');
+                            context.go('/sign-up');
                           },
                           child: const Text(
                             "Sign Up",

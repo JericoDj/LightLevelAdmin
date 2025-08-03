@@ -96,7 +96,7 @@ class SignUpController extends GetxController {
         _showTopSnackbar(context, "Success", "Account created successfully!", Colors.green);
 
         // ✅ Navigate to dashboard or home
-        context.go('/navigation/home');
+        context.go('/login');
       } else {
         print("❌ Registration failed. UserCredential is null.");
         _showTopSnackbar(context, "Error", "Registration failed. Please try again.", Colors.red);

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StressController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -102,4 +103,51 @@ class StressController {
 
     return averages;
   }
+
+  /// 👤 Alias for UI breakdown
+  Map<String, double> getUserContributions() {
+    return getPerUserAverages();
+  }
+
+  Map<String, Map<String, dynamic>> getUserContributionsDetailed() {
+    final details = <String, Map<String, dynamic>>{};
+
+    final Map<String, List<Map<String, dynamic>>> userEntries = {};
+
+    // Parse _stressTrackingData which uses keys like "2025-08-01-userId"
+    _stressTrackingData.forEach((key, value) {
+      final parts = key.split('-');
+      if (parts.length < 2) return;
+
+      final date = parts.take(3).join('-');
+      final userId = parts.sublist(3).join('-');
+
+      final user = _perUserStress.keys.firstWhere(
+            (u) => _perUserStress[u]!.any((v) => v == value),
+        orElse: () => userId,
+      );
+
+      userEntries.putIfAbsent(user, () => []).add({
+        'date': date,
+        'value': value,
+      });
+    });
+
+    userEntries.forEach((user, entries) {
+      final values = entries.map((e) => e['value'] as double).toList();
+      final avg = values.reduce((a, b) => a + b) / values.length;
+
+      details[user] = {
+        'average': avg,
+        'count': values.length,
+        'entries': entries,
+      };
+    });
+
+    print(details);
+
+    return details;
+  }
+
 }
+

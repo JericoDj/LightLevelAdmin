@@ -177,7 +177,7 @@ class SignUpScreen extends StatelessWidget {
 
                     // Already have an account? Login
                     TextButton(
-                      onPressed: () => context.pop(),
+                      onPressed: () => context.go('/login'),
                       child: const Text(
                         "Already have an account? Login",
                         style: TextStyle(color: MyColors.color2),

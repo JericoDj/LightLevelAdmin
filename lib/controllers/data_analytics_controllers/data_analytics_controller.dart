@@ -22,6 +22,7 @@ class DataAnalyticsController {
   List<Map<String, dynamic>>? callReport;
   List<Map<String, dynamic>>? chatReport;
 
+
   final StressController stressController = StressController();
   final MoodController moodController = MoodController();
   final BookingSessionsController bookingSessionsController = BookingSessionsController();
@@ -79,12 +80,15 @@ class DataAnalyticsController {
     moodStressReport!['moodTrend'] = result;
   }
   /// 📊 Generate only Stress Trend
-  Future<void> generateStressOnly(DateTime? startDate, DateTime? endDate) async {
+  Future<void> generateStressOnly(DateTime? start, DateTime? end) async {
     if (selectedUsers.isEmpty) return;
 
-    if (startDate != null && endDate != null) {
-      stressController.setDateRange(startDate, endDate);
-    }
+    final now = DateTime.now();
+    final defaultStart = DateTime(now.year, now.month, 1);
+    final startDateToUse = start ?? defaultStart;
+    final endDateToUse = end ?? now;
+
+    stressController.setDateRange(startDateToUse, endDateToUse);
 
     final result = await stressController.generateStressTrend(selectedUsers);
     moodStressReport ??= {};
