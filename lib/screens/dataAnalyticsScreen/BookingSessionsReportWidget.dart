@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BookingSessionsReportWidget extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -50,6 +51,10 @@ class BookingSessionsReportWidget extends StatelessWidget {
                   ? DateFormat('yyyy-MM-dd').format(dateRequested)
                   : 'N/A';
 
+              final rawLink = booking['result_link']?.toString().trim() ?? '';
+              final isPlaceholder = rawLink.toLowerCase() == 'you may see your session notes here:';
+              final displayLink = isPlaceholder ? 'No Results Link Uploaded' : rawLink;
+
               return Card(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -68,6 +73,30 @@ class BookingSessionsReportWidget extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text('📅 Date: $formattedDate'),
                       Text('🛎️ Service Availed: ${booking['serviceAvailed']}'),
+
+                      if (isPlaceholder)
+                        const Text('🔗 Result Link: No Results Link Uploaded')
+                      else
+                        GestureDetector(
+                          onTap: () async {
+                            final uri = Uri.tryParse(rawLink);
+                            if (uri != null && await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Could not open result link')),
+                              );
+                            }
+                          },
+                          child: Text(
+                            '🔗 Result Link: $displayLink',
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+
                       Text('💬 Type: ${booking['type']}'),
                       Text('📌 Status: ${booking['status']}'),
                     ],

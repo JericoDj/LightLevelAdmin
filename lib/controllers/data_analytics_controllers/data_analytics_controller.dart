@@ -103,6 +103,23 @@ class DataAnalyticsController {
       startDate: startDate,
       endDate: endDate,
     );
+
+    print('📋 Booking Report:');
+    print('Total: ${bookingReport?['total']}');
+
+    print('Online: ${bookingReport?['online']}');
+    print('Face-to-Face: ${bookingReport?['faceToFace']}');
+
+    final bookings = bookingReport?['bookings'] ?? [];
+    for (final booking in bookings) {
+      print('🔸 Booking: ${booking['full_name']} | '
+          'Service: ${booking['serviceAvailed']} | '
+          'Type: ${booking['type']} | '
+          'Status: ${booking['status']} | '
+          'ResultLink: ${booking['result_link']} | '
+          'Specialist: ${booking['specialist']} | '
+          'Date: ${booking['date_requested']}');
+    }
   }
 
   /// 📞 Generate only Call Report

@@ -157,7 +157,7 @@ class MoodReportWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '🧑‍🤝‍🧑 Mood Contributions by User (with Dates)',
+            '🧑‍🤝‍🧑 Mood Contributions',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
           const SizedBox(height: 16),

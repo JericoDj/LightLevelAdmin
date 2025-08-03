@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class BookingSessionsController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+
+
   Future<Map<String, dynamic>> generateReport(
       List<String> users,
       String status, {
@@ -43,16 +45,21 @@ class BookingSessionsController {
         if (type == 'Online') online++;
         if (type == 'Face to Face') faceToFace++;
 
+
+
         bookings.add({
           'id': doc.id,
           'serviceAvailed': data['service'],
           'date_requested': dateRequested,
+          'result_link': data['result_link'],
           'type': type,
           'status': data['status'],
           'full_name': data['full_name'],
         });
       }
     }
+
+
 
     return {
       'total': bookings.length,
