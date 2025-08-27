@@ -278,9 +278,30 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
         child: ListView(
           children: [
             // 📁 Select Company
+            Wrap(
+              children: [
+
+              ],
+            ),
+            _buildDropdown(
+              'Select Company',
+              controller.selectedCompany,
+              controller.companies,
+                  (val) async {
+                setState(() {
+                  controller.selectedCompany = val;
+                  controller.selectedUsers = [];
+                  controller.mockUsers = [];
+                });
+                await controller.fetchUsersForCompany();
+                setState(() {});
+              },
+            ),
+
 
             Wrap(
               children: [
+
 
               ],
             ),
@@ -598,7 +619,7 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.image, color: Colors.white),
-                  label: const Text('Save as PNG', ),
+                  label: const Text('Save as PNG', style: TextStyle(color: Colors.white),),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: MyColors.color2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -626,7 +647,7 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.table_chart, color: Colors.white),
-                  label: const Text('Export as Excel'),
+                  label: const Text('Export as Excel', style: TextStyle(color: Colors.white),),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -814,5 +835,81 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
       ..click();
     html.Url.revokeObjectUrl(url);
   }
+
+
+
+  Widget _buildDropdown(
+      String label,
+      String? value,
+      List<String> items,
+      ValueChanged<String?> onChanged,
+      ) {
+    return Container(
+      width: 260,
+      margin: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 2,
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Container(
+                width: 400,
+                child: DropdownButtonFormField<String>(
+                  value: value,
+                  isExpanded: true,
+                  items: items
+                      .map((e) => DropdownMenuItem<String>(
+                    value: e,
+                    child: Text(e),
+                  ))
+                      .toList(),
+                  onChanged: onChanged,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    enabledBorder: OutlineInputBorder(
+
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.transparent),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: MyColors.color2, width: 1.5),
+                    ),
+                  ),
+                  icon: const Icon(Icons.keyboard_arrow_down),
+                  dropdownColor: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
 }
