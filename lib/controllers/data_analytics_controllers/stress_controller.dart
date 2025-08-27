@@ -79,7 +79,7 @@ class StressController {
 
     for (final level in _stressTrackingData.values) {
       if (level <= 40) {
-        counts['Low'] = counts['Low']! + 1;
+        counts['Low'] = counts['Low']! + 1; // no space here ✅
       } else if (level <= 70) {
         counts['Moderate'] = counts['Moderate']! + 1;
       } else {

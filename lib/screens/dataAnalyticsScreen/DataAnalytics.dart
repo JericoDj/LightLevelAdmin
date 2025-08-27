@@ -1,11 +1,16 @@
 import 'dart:ui' as ui;
 
+
+
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
 import 'package:printing/printing.dart';
+import 'package:pdf/widgets.dart' as pw;
+
 
 import '../../controllers/data_analytics_controllers/data_analytics_controller.dart';
 import 'BookingSessionsReportWidget.dart';
@@ -16,7 +21,7 @@ import 'StressReportWidget.dart';
 import 'UserSelectionDialog.dart';
 import 'dart:html' as html;
 
-enum ReportType { mood, stress, booking, call, chat }
+enum ReportType { mood, stress, booking, call, chat, all }
 
 class DataAnalyticsReportScreen extends StatefulWidget {
 
@@ -279,20 +284,7 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
 
               ],
             ),
-            _buildDropdown(
-              'Select Company',
-              controller.selectedCompany,
-              controller.companies,
-                  (val) async {
-                setState(() {
-                  controller.selectedCompany = val;
-                  controller.selectedUsers = [];
-                  controller.mockUsers = [];
-                });
-                await controller.fetchUsersForCompany();
-                setState(() {});
-              },
-            ),
+
 
             const SizedBox(height: 16),
 
@@ -338,6 +330,26 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
               spacing: 12,
               runSpacing: 12,
               children: [
+
+                _buildActionButton(
+                  label: 'Generate All Data Analytics',
+                  onTap: () async {
+                    await controller.generateMoodOnly(range.start, range.end);
+                    await controller.generateStressOnly(range.start, range.end);
+
+                    // Loop through all statuses instead of showing a dialog
+                    final allStatuses = ['Requested', 'Scheduled', 'Finished', 'Cancelled'];
+                    for (final status in allStatuses) {
+                      await controller.generateBookingSessionsReport(status, range.start, range.end);
+                    }
+
+                    await controller.generateCallOnly(range.start, range.end);
+                    await controller.generateChatOnly(range.start, range.end);
+
+                    setState(() => currentReportType = ReportType.all);
+                  },
+                ),
+
                 _buildActionButton(
                   label: 'Generate Mood',
                   onTap: () async {
@@ -444,6 +456,53 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
                     );
                   }
 
+                  if (currentReportType == ReportType.all) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (controller.moodStressReport?['moodTrend'] != null)
+                          MoodReportWidget(
+                            moodTrend: controller.moodStressReport!['moodTrend'],
+                            moodCounts: controller.moodController.getMoodCounts(),
+                            company: controller.selectedCompany ?? 'Unknown',
+                            selectedUsers: controller.selectedUsers,
+                            userMoodData: controller.moodController.getUserMoodContributions(),
+                          ),
+                        const SizedBox(height: 20),
+                        if (controller.moodStressReport?['stressTrend'] != null)
+                          StressReportWidget(
+                            stressTrend: controller.moodStressReport!['stressTrend'],
+                            stressCounts: controller.stressController.getStressLevelCounts(),
+                            company: controller.selectedCompany ?? 'Unknown',
+                            selectedUsers: controller.selectedUsers,
+                            userContributions: controller.stressController.getUserContributionsDetailed(),
+                          ),
+                        const SizedBox(height: 20),
+                        if (controller.bookingReport != null)
+                          BookingSessionsReportWidget(
+                            data: controller.bookingReport!,
+                            company: controller.selectedCompany ?? 'Unknown',
+                            selectedUsers: controller.selectedUsers,
+                          ),
+                        const SizedBox(height: 20),
+                        if (controller.callReport != null)
+                          CallReportWidget(
+                            data: controller.callReport!,
+                            company: controller.selectedCompany ?? 'Unknown',
+                            selectedUsers: controller.selectedUsers,
+                          ),
+                        const SizedBox(height: 20),
+                        if (controller.chatReport != null)
+                          ChatReportWidget(
+                            data: controller.chatReport!,
+                            company: controller.selectedCompany ?? 'Unknown',
+                            selectedUsers: controller.selectedUsers,
+                          ),
+                      ],
+                    );
+                  }
+
+
                   return const SizedBox.shrink();
                 },
               ),
@@ -534,21 +593,18 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
               style: TextStyle(fontSize: 16),
             ),
             actions: [
+              // PNG
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  icon: const Icon(
-                      color: MyColors.white,
-                      Icons.image),
-                  label: const Text('Save as PNG'),
+                  icon: const Icon(Icons.image, color: Colors.white),
+                  label: const Text('Save as PNG', ),
                   style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
                     backgroundColor: MyColors.color2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: () async {
-                    Navigator.pop(dialogContext); // Close only the dialog
-
+                    Navigator.pop(dialogContext);
                     if (kIsWeb) {
                       final blob = html.Blob([pngBytes]);
                       final url = html.Url.createObjectUrlFromBlob(blob);
@@ -562,7 +618,34 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
                   },
                 ),
               ),
+
               const SizedBox(height: 8),
+
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.table_chart, color: Colors.white),
+                  label: const Text('Export as Excel'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    await _exportAsExcel();
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // PDF
+
+
+              const SizedBox(height: 8),
+
+              // Cancel
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
@@ -572,7 +655,7 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
                     side: const BorderSide(color: Colors.grey),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  onPressed: () => Navigator.pop(dialogContext), // Close only the dialog
+                  onPressed: () => Navigator.pop(dialogContext),
                 ),
               ),
             ],
@@ -588,78 +671,148 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
   }
 
 
-  Widget _buildDropdown(
-      String label,
-      String? value,
-      List<String> items,
-      void Function(String?) onChanged,
-      ) {
-    return Container(
-      width: 260,
-      margin: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 2,
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Container(
-                width: 400,
-                child: DropdownButtonFormField<String>(
-                  value: value,
-                  isExpanded: true,
-                  items: items
-                      .map((e) => DropdownMenuItem<String>(
-                    value: e,
-                    child: Text(e),
-                  ))
-                      .toList(),
-                  onChanged: onChanged,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                    enabledBorder: OutlineInputBorder(
+  Future<void> _exportAsExcel() async {
+    final workbook = xlsio.Workbook();
+    final sheet = workbook.worksheets[0];
+    sheet.name = 'Report';
 
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.transparent),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: MyColors.color2, width: 1.5),
-                    ),
-                  ),
-                  icon: const Icon(Icons.keyboard_arrow_down),
-                  dropdownColor: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    final selectedUsers = controller.selectedUsers;
+    final selectedCompany = controller.selectedCompany;
+
+    int row = 1;
+
+    // ================= COVER SECTION =================
+    if (selectedCompany != null && selectedUsers != null && selectedUsers.isNotEmpty) {
+      sheet.getRangeByIndex(row, 1).setText('Company:');
+      sheet.getRangeByIndex(row, 2).setText(selectedCompany);
+      row++;
+      sheet.getRangeByIndex(row, 1).setText('Generated for users:');
+      row++;
+      for (final user in selectedUsers) {
+        sheet.getRangeByIndex(row, 1).setText(user);
+        row++;
+      }
+    } else if (selectedCompany != null) {
+      sheet.getRangeByIndex(row, 1).setText('Company:');
+      sheet.getRangeByIndex(row, 2).setText(selectedCompany);
+      row++;
+    } else if (selectedUsers != null && selectedUsers.isNotEmpty) {
+      if (selectedUsers.length == 1) {
+        sheet.getRangeByIndex(row, 1).setText('Name:');
+        sheet.getRangeByIndex(row, 2).setText(selectedUsers.first);
+        row++;
+      } else {
+        sheet.getRangeByIndex(row, 1).setText('Generated for users:');
+        row++;
+        for (final user in selectedUsers) {
+          sheet.getRangeByIndex(row, 1).setText(user);
+          row++;
+        }
+      }
+    } else {
+      sheet.getRangeByIndex(row, 1).setText('Generated for: All Data');
+      row++;
+    }
+
+    // Totals
+    sheet.getRangeByIndex(row, 1).setText('Total Bookings:');
+    sheet.getRangeByIndex(row, 2).setText('${controller.bookingReport?['total'] ?? 0}');
+    row++;
+    sheet.getRangeByIndex(row, 1).setText('Total Calls:');
+    sheet.getRangeByIndex(row, 2).setText('${controller.callReport?.length ?? 0}');
+    row++;
+    sheet.getRangeByIndex(row, 1).setText('Total Chats:');
+    sheet.getRangeByIndex(row, 2).setText('${controller.chatReport?.length ?? 0}');
+    row++;
+    sheet.getRangeByIndex(row, 1).setText('Mood Tracking Trend:');
+    sheet.getRangeByIndex(row, 2).setText(controller.moodStressReport?['moodTrend']?.toString() ?? '-');
+    row++;
+    sheet.getRangeByIndex(row, 1).setText('Stress Tracking Trend:');
+    sheet.getRangeByIndex(row, 2).setText(controller.moodStressReport?['stressTrend']?.toString() ?? '-');
+    row += 2;
+
+    sheet.getRangeByIndex(row, 1).setText('================ Overall Report ================');
+    row += 2;
+
+    // ================= SECTION 1: Mood =================
+    sheet.getRangeByIndex(row, 1).setText('1. Mood Trend Data');
+    row++;
+    final moodCounts = controller.moodController.getMoodCounts();
+    moodCounts.forEach((mood, count) {
+      sheet.getRangeByIndex(row, 1).setText(mood.toString());
+      sheet.getRangeByIndex(row, 2).setText(count.toString());
+      row++;
+    });
+    row++;
+
+    // ================= SECTION 2: Stress =================
+    sheet.getRangeByIndex(row, 1).setText('2. Stress Categories (Pie Chart Data)');
+    row++;
+    final stressCounts = controller.stressController.getStressLevelCounts();
+    stressCounts.forEach((level, avg) {
+      sheet.getRangeByIndex(row, 1).setText(level.toString());
+      sheet.getRangeByIndex(row, 2).setText(avg.toString());
+      row++;
+    });
+    row++;
+
+    // ================= SECTION 3: Booking Sessions =================
+    sheet.getRangeByIndex(row, 1).setText('3. Booking Sessions & Services Completed');
+    row++;
+    sheet.getRangeByIndex(row, 1).setText('Full Name');
+    sheet.getRangeByIndex(row, 2).setText('Service');
+    sheet.getRangeByIndex(row, 3).setText('Status');
+    sheet.getRangeByIndex(row, 4).setText('Date Requested');
+    row++;
+    final bookings = controller.bookingReport?['bookings'] as List<Map<String, dynamic>>? ?? [];
+    for (final session in bookings) {
+      sheet.getRangeByIndex(row, 1).setText(session['full_name']?.toString() ?? '');
+      sheet.getRangeByIndex(row, 2).setText(session['serviceAvailed']?.toString() ?? '');
+      sheet.getRangeByIndex(row, 3).setText(session['status']?.toString() ?? '');
+      sheet.getRangeByIndex(row, 4).setText(session['date_requested']?.toString() ?? '');
+      row++;
+    }
+    row++;
+
+    // ================= SECTION 4: Calls =================
+    sheet.getRangeByIndex(row, 1).setText('4. 24/7 Call Data');
+    row++;
+    sheet.getRangeByIndex(row, 1).setText('Full Name');
+    sheet.getRangeByIndex(row, 2).setText('Duration');
+    sheet.getRangeByIndex(row, 3).setText('Started At');
+    row++;
+    controller.callReport?.forEach((call) {
+      sheet.getRangeByIndex(row, 1).setText(call['fullName']?.toString() ?? '');
+      sheet.getRangeByIndex(row, 2).setText(call['durationFormatted']?.toString() ?? '');
+      sheet.getRangeByIndex(row, 3).setText(call['timestampStarted']?.toString() ?? '');
+      row++;
+    });
+    row++;
+
+    // ================= SECTION 5: Chats =================
+    sheet.getRangeByIndex(row, 1).setText('5. 24/7 Chat Data');
+    row++;
+    sheet.getRangeByIndex(row, 1).setText('Full Name');
+    sheet.getRangeByIndex(row, 2).setText('Timestamp');
+    sheet.getRangeByIndex(row, 3).setText('Message Count');
+    row++;
+    controller.chatReport?.forEach((chat) {
+      sheet.getRangeByIndex(row, 1).setText(chat['fullName']?.toString() ?? '');
+      sheet.getRangeByIndex(row, 2).setText(chat['timestamp']?.toString() ?? '');
+      sheet.getRangeByIndex(row, 3).setText('${chat['messages']?.length ?? 0}');
+      row++;
+    });
+
+    // ================= SAVE FILE =================
+    final List<int> bytes = workbook.saveAsStream();
+    workbook.dispose();
+
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute("download", "report.xlsx")
+      ..click();
+    html.Url.revokeObjectUrl(url);
   }
-
 
 }
