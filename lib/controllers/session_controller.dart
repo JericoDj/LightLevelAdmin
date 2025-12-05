@@ -28,6 +28,11 @@ class SessionsController {
 
     if (snapshot.exists && snapshot.data() != null) {
       var data = snapshot.data() as Map<String, dynamic>;
+      print(data['callRoom']);
+      print(data['callRoom']);
+      print(data['callRoom']);
+      print(data['callRoom']);
+
 
       if (sessionType == "Chat") {
         // ✅ Go to Chat Screen

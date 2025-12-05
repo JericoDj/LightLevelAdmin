@@ -101,29 +101,13 @@ final GoRouter router = GoRouter(
             return SupportsCallPage(
               roomId: roomId,
               isCaller: false,
-              fullName: data['fullName'] ?? '',
-              companyId: data['companyId'] ?? '',
+              fullName: data['fullName'],
+              companyId: data['companyId'],
               startedAt: DateTime.now(),
+              userId: userId,          // ✔️ REQUIRED
+              sessionType: "talk",     // ✔️ REQUIRED
             );
           },
-        );
-      },
-    ),
-
-
-    GoRoute(
-      path: '/navigation/support/:roomId/:isCaller',
-      builder: (context, state) {
-        final roomId = state.pathParameters['roomId'] ?? '';
-        final isCaller = state.pathParameters['isCaller'] == 'true';
-        final extra = state.extra as Map<String, dynamic>?;
-
-        return SupportsCallPage(
-          roomId: roomId,
-          isCaller: isCaller,
-          fullName: extra?['fullName'] ?? '',
-          companyId: extra?['companyId'] ?? '',
-          startedAt: extra?['startedAt'] ?? DateTime.now(),
         );
       },
     ),

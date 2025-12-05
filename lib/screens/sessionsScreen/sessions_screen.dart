@@ -120,9 +120,11 @@ class _SessionsScreenState extends State<SessionsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: _buildActionButtons(context, status, data["userId"], data["sessionType"], data["fullName"] ?? "Unknown", data["companyId"] ?? "Unknown"),
+          SingleChildScrollView(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: _buildActionButtons(context, status, data["userId"], data["sessionType"], data["fullName"] ?? "Unknown", data["companyId"] ?? "Unknown"),
+            ),
           ),
         ],
       ),
