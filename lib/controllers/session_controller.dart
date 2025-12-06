@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../screens/sessionsScreen/call_page.dart' show CallPage;
+
 class SessionsController {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
@@ -15,41 +17,72 @@ class SessionsController {
   }
 
 // ✅ Open Chat or Talk Session
-  void openSession(BuildContext context, String userId, String sessionType, String fullName, String companyId) async {
-    String collectionPath = "safe_talk/${sessionType.toLowerCase()}/queue";
-    print(fullName);
+  Future<void> openSession(
+      BuildContext context,
+      String userId,
+      String sessionType,
+      String fullName,
+      String companyId,
+      ) async {
+    final isChat = sessionType.toLowerCase() == "chat";
 
+    // ✅ CHAT → just open chat
+    if (isChat) {
+      GoRouter.of(context).push(
+        '/navigation/chat/$userId/$fullName/$companyId',
+      );
+      return;
+    }
 
+    // ✅ TALK → wait for callRoom
+    final docRef = FirebaseFirestore.instance
+        .collection("safe_talk")
+        .doc("talk")
+        .collection("queue")
+        .doc(userId);
 
-    DocumentSnapshot snapshot = await FirebaseFirestore.instance
-        .collection(collectionPath)
-        .doc(userId)
-        .get();
+    try {
+      const maxAttempts = 10;
+      const retryDelay = Duration(milliseconds: 300);
 
-    if (snapshot.exists && snapshot.data() != null) {
-      var data = snapshot.data() as Map<String, dynamic>;
-      print(data['callRoom']);
-      print(data['callRoom']);
-      print(data['callRoom']);
-      print(data['callRoom']);
+      String? callRoom;
 
+      for (int i = 0; i < maxAttempts; i++) {
+        final snap = await docRef.get();
 
-      if (sessionType == "Chat") {
-        // ✅ Go to Chat Screen
-        GoRouter.of(context).push('/navigation/chat/$userId/$fullName/${data['companyId']}');
-      } else {
-        // ✅ Go to Talk Screen if callRoom exists
-        String? callRoom = data['callRoom'];
-        if (callRoom != null && callRoom.isNotEmpty) {
-          GoRouter.of(context).push('/navigation/talk/$userId/$callRoom');
-        } else {
-          print("❌ No valid callRoom found for user: $userId");
+        if (snap.exists) {
+          final data = snap.data()!;
+          callRoom = data["callRoom"];
+
+          if (callRoom != null && callRoom.toString().isNotEmpty) {
+            break;
+          }
         }
+
+        await Future.delayed(retryDelay);
       }
-    } else {
-      print("❌ Document not found for user: $userId");
+
+      if (callRoom == null || callRoom!.isEmpty) {
+        debugPrint("❌ callRoom not found for $userId");
+        return;
+      }
+
+      // ✅ JOIN CLIENT ROOM
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CallPage(
+            roomId: callRoom,
+            isCaller: false, // ✅ ADMIN JOINS
+          ),
+        ),
+      );
+    } catch (e, st) {
+      debugPrint("❌ openSession error: $e");
+      debugPrint("📍 $st");
     }
   }
+
+
 
 
 

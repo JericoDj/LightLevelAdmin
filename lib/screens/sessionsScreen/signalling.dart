@@ -8,14 +8,26 @@ typedef void StreamStateCallback(MediaStream stream);
 class Signaling {
   Map<String, dynamic> configuration = {
     'iceServers': [
+      // ✅ STUN (fast path – works on Wi-Fi)
       {
         'urls': [
           'stun:stun1.l.google.com:19302',
-          'stun:stun2.l.google.com:19302'
-        ]
-      }
-    ]
+          'stun:stun2.l.google.com:19302',
+        ],
+      },
+
+      // ✅ TURN (required for mobile data / strict NAT)
+      {
+        'urls': [
+          'turn:relay1.expressturn.com:3480?transport=udp',
+          'turn:relay1.expressturn.com:3480?transport=tcp',
+        ],
+        'username': 'efCZROI01OLPMN8I36',
+        'credential': 'UZJ6nsqQoCXfVm6S',
+      },
+    ],
   };
+
 
   RTCPeerConnection? peerConnection;
   MediaStream? localStream;

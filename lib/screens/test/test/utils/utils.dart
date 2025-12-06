@@ -5,11 +5,12 @@ class Utils {
     //! - https://www.metered.ca/stun-turn
 
     return [
-      {"url": "stun:stun.l.google.com:19302"},
+      // {"url": "stun:stun.l.google.com:19302"},
+      // // relay1.expressturn.com:3480
       {
-        "url": "turn:eu-0.turn.peerjs.com:3478",
-        "username": "peerjs",
-        "credential": "peerjsp",
+        "urls": "turn:relay1.expressturn.com:3480",
+        "username": "efCZROI01OLPMN8I36",
+        "credential": "UZJ6nsqQoCXfVm6S",
       },
     ];
   }

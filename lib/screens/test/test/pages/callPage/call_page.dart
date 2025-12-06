@@ -18,6 +18,7 @@ class SupportsCallPage extends StatefulWidget {
   final String userId;      // needed for signaling
   final String sessionType; // “talk”
 
+
   SupportsCallPage({
     Key? key,
     required this.roomId,
@@ -36,6 +37,7 @@ class SupportsCallPage extends StatefulWidget {
 class _CallPageState extends State<SupportsCallPage> {
   late WebRtcService fbCallService;
 
+  final List<RTCIceCandidate> _pendingIce = [];
   RTCPeerConnection? peerConnection;
   final localVideo = RTCVideoRenderer();
   final remoteVideo = RTCVideoRenderer();
@@ -69,6 +71,11 @@ class _CallPageState extends State<SupportsCallPage> {
 
       await _openMicrophoneOnly();
 
+      for (final track in localStream!.getAudioTracks()) {
+        print("ADMIN audio track enabled: ${track.enabled}");
+        print("ADMIN audio track id: ${track.id}");
+      }
+
       await remoteVideo.initialize();
 
       // START ADMIN SIGNALING CONTROLLER
@@ -78,6 +85,8 @@ class _CallPageState extends State<SupportsCallPage> {
         sessionType: widget.sessionType,
       );
 
+
+      print("📞 ADMIN: Starting signaling controller...");
       signaling.startListening(); // 👂 WAIT FOR CLIENT OFFER AND ICE
 
       _listenICE();
@@ -107,8 +116,10 @@ class _CallPageState extends State<SupportsCallPage> {
 
   Future<void> _openMicrophoneOnly() async {
     localStream = await navigator.mediaDevices.getUserMedia({
+
+
       "audio": true,
-      "video": true,
+      "video": false,
     });
 
     await localVideo.initialize();
@@ -147,7 +158,7 @@ class _CallPageState extends State<SupportsCallPage> {
       if (state == RTCIceConnectionState.RTCIceConnectionStateFailed ||
           state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
         print("❌ ADMIN: WebRTC Disconnected.");
-        _leaveCall();
+        // _leaveCall();
       }
     };
   }

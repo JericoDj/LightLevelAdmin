@@ -45,11 +45,11 @@ class _CallPageState extends State<SupportCallPage> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 100), () async {
+
       fbCallService = Provider.of<WebRtcService>(context, listen: false);
-      await openCamera();
+      openCamera();
       init();
-    });
+
   }
 
   @override
