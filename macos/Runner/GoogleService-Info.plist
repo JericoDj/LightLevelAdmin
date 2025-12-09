@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyBTBa8OM6jbKUD46s9LVT4ur4Xd4ykWzF0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>120005958239</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.lightlevelpsychosolutions.admin.lightlevelpsychosolutionsadmin</string>
+	<key>PROJECT_ID</key>
+	<string>llps-mentalapp</string>
+	<key>STORAGE_BUCKET</key>
+	<string>llps-mentalapp.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:120005958239:ios:a045f2aa504f9f769e99ea</string>
+</dict>
+</plist>
