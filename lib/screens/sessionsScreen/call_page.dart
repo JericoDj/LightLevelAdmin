@@ -78,7 +78,6 @@ class _CallPageState extends State<CallPage> {
         for (final audioTrack in stream.getAudioTracks()) {
           audioTrack.enabled = true;
         }
-
         debugPrint(
           '🎧 Remote tracks — '
               'audio: ${stream.getAudioTracks().length}, '
@@ -242,7 +241,7 @@ class _CallPageState extends State<CallPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 26, 26, 26),
+
 
       body: CallPageWidget(
         connectingLoading: connectingLoading,

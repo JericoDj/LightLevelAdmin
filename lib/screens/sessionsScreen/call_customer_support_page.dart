@@ -229,7 +229,7 @@ class _CallCustomerSupportPageState extends State<CallCustomerSupportPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 26, 26, 26),
+
 
       body: CallCustomerSupportPageWidget(
         connectingLoading: connectingLoading,

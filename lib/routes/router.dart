@@ -28,6 +28,7 @@ import '../screens/reports/communityPostReports/communityPostReportsScreen.dart'
 import '../screens/reports/sessionCallReports/sessionCallReportsScreen.dart';
 import '../screens/reports/sessionChatReports/sessionChatReportsScreen.dart';
 import '../screens/reports/ticketsReports/ticketReportsScreen.dart';
+import '../screens/sessionsScreen/call_page.dart';
 import '../screens/sessionsScreen/chat_screen.dart';
 import '../screens/sessionsScreen/sessions_screen.dart';
 import '../screens/supportScreen/support_call_page.dart';
@@ -98,12 +99,10 @@ final GoRouter router = GoRouter(
 
             final data = snapshot.data!.data() as Map<String, dynamic>;
 
-            return SupportsCallPage(
+            return CallPage(
               roomId: roomId,
               isCaller: false,
-              fullName: data['fullName'],
-              companyId: data['companyId'],
-              startedAt: DateTime.now(),
+
               userId: userId,          // ✔️ REQUIRED
               sessionType: "talk",     // ✔️ REQUIRED
             );

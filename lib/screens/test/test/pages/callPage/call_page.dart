@@ -110,7 +110,7 @@ class _CallPageState extends State<SupportsCallPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 26, 26, 26),
+
       body: CallPageWidget(
         connectingLoading: connectingLoading,
         roomId: widget.roomId ?? "",

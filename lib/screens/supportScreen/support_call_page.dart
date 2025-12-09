@@ -63,7 +63,7 @@ class _CallPageState extends State<SupportCallPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 26, 26, 26),
+
       appBar: AppBar(
         backgroundColor: Colors.grey.shade800,
         leading: const SizedBox(),

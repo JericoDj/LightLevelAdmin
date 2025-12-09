@@ -45,7 +45,7 @@ class _CallPageWidgetState extends State<CallPageWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
         child: Column(
@@ -137,21 +137,21 @@ class _CallPageWidgetState extends State<CallPageWidget> {
       ),
 
       // ✅ SMALL LOCAL VIDEO PREVIEW
-      floatingActionButton: Positioned(
-        bottom: 20,
-        right: 20,
-        child: SizedBox(
-          width: 110,
-          height: 150,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: RTCVideoView(
-              widget.localVideo,
-              mirror: true,
-            ),
-          ),
-        ),
-      ),
+      // floatingActionButton: Positioned(
+      //   bottom: 20,
+      //   right: 20,
+      //   child: SizedBox(
+      //     width: 110,
+      //     height: 150,
+      //     child: ClipRRect(
+      //       borderRadius: BorderRadius.circular(12),
+      //       child: RTCVideoView(
+      //         widget.localVideo,
+      //         mirror: true,
+      //       ),
+      //     ),
+      //   ),
+      // ),
     );
   }
 
