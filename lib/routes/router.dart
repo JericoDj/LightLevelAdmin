@@ -77,39 +77,17 @@ final GoRouter router = GoRouter(
 
     // ✅ Call Route for Talk Sessions
     GoRoute(
-      path: '/navigation/talk/:userId/:roomId',
+      path: '/navigation/talk/:roomId',
       builder: (context, state) {
-        final String roomId = state.pathParameters['roomId'] ?? '';
-        final String userId = state.pathParameters['userId'] ?? '';
+        final roomId = state.pathParameters['roomId']!;
 
-        return FutureBuilder(
-          future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
-              return const Scaffold(
-                body: Center(child: Text('❌ User data not found.')),
-              );
-            }
-
-            final data = snapshot.data!.data() as Map<String, dynamic>;
-
-            return CallPage(
-              roomId: roomId,
-              isCaller: false,
-
-              userId: userId,          // ✔️ REQUIRED
-              sessionType: "talk",     // ✔️ REQUIRED
-            );
-          },
+        return CallPage(
+          roomId: roomId,
+          isCaller: false, // ✅ ADMIN JOINS
         );
       },
     ),
+
 
     // ✅ New Support Call Route
     GoRoute(

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../routes/router.dart';
 import '../screens/sessionsScreen/call_page.dart' show CallPage;
 
 class SessionsController {
@@ -16,71 +17,56 @@ class SessionsController {
     return firestore.collection(collectionPath).where("status", isEqualTo: status).snapshots();
   }
 
+
 // ✅ Open Chat or Talk Session
   Future<void> openSession(
-      BuildContext context,
       String userId,
       String sessionType,
       String fullName,
       String companyId,
       ) async {
+    print("✅ openSession RUNNING");
+
     final isChat = sessionType.toLowerCase() == "chat";
 
-    // ✅ CHAT → just open chat
     if (isChat) {
-      GoRouter.of(context).push(
+      router.push(
         '/navigation/chat/$userId/$fullName/$companyId',
       );
       return;
     }
 
-    // ✅ TALK → wait for callRoom
     final docRef = FirebaseFirestore.instance
         .collection("safe_talk")
         .doc("talk")
         .collection("queue")
         .doc(userId);
 
-    try {
-      const maxAttempts = 10;
-      const retryDelay = Duration(milliseconds: 300);
+    const maxAttempts = 10;
+    const retryDelay = Duration(milliseconds: 300);
 
-      String? callRoom;
+    String? callRoom;
 
-      for (int i = 0; i < maxAttempts; i++) {
-        final snap = await docRef.get();
+    for (int i = 0; i < maxAttempts; i++) {
+      final snap = await docRef.get();
 
-        if (snap.exists) {
-          final data = snap.data()!;
-          callRoom = data["callRoom"];
-
-          if (callRoom != null && callRoom.toString().isNotEmpty) {
-            break;
-          }
-        }
-
-        await Future.delayed(retryDelay);
+      if (snap.exists) {
+        callRoom = snap.data()?["callRoom"];
+        if (callRoom != null && callRoom!.isNotEmpty) break;
       }
 
-      if (callRoom == null || callRoom!.isEmpty) {
-        debugPrint("❌ callRoom not found for $userId");
-        return;
-      }
-
-      // ✅ JOIN CLIENT ROOM
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => CallPage(
-            roomId: callRoom,
-            isCaller: false, // ✅ ADMIN JOINS
-          ),
-        ),
-      );
-    } catch (e, st) {
-      debugPrint("❌ openSession error: $e");
-      debugPrint("📍 $st");
+      await Future.delayed(retryDelay);
     }
+
+    if (callRoom == null) {
+      debugPrint("❌ callRoom not found");
+      return;
+    }
+
+    router.push('/navigation/talk/$callRoom');
+    print("✅ Joined talk session: $callRoom");
   }
+
 
 
 

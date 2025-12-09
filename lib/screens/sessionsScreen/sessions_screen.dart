@@ -11,6 +11,7 @@ class SessionsScreen extends StatefulWidget {
 class _SessionsScreenState extends State<SessionsScreen> {
   final SessionsController controller = SessionsController();
 
+
   // ✅ Show Status Update Dialog
   void _showStatusDialog(BuildContext context, String userId, String sessionType) {
     showDialog(
@@ -137,19 +138,39 @@ class _SessionsScreenState extends State<SessionsScreen> {
       return [
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          onPressed: () => controller.admitUser(context, userId, sessionType, fullName, companyId),
-          child: const Text("Admit", style: TextStyle(color: Colors.white),),
+          child: const Text("Admit", style: TextStyle(color: Colors.white)),
+          onPressed: () async {
+            await controller.admitUser(
+              context,
+              userId,
+              sessionType,
+              fullName,
+              companyId,
+            );
+
+            controller.openSession(
+              userId,
+              sessionType,
+              fullName,
+              companyId,
+            );
+          },
         ),
+
       ];
     } else if (status == "ongoing" || status == "finished") {
       return [
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-          onPressed: () => controller.openSession(context, userId, sessionType, fullName, companyId),
-          child: Text(
-              style: const TextStyle(color: Colors.white),
-              "Open") ,
-        ),
+        // ElevatedButton(
+        //   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+        //     child: Text(
+        //         style: const TextStyle(color: Colors.white),
+        //         "Open"),
+        //   onPressed: () async {
+        //     controller.openSession( userId, sessionType, fullName, companyId);
+        //
+        //
+        //   }
+        // ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
           onPressed: () => _showStatusDialog(context, userId, sessionType),
@@ -162,6 +183,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final rootContext = context;
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(50), // <-- set your desired height here

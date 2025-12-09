@@ -31,24 +31,45 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
   // ✅ Load role from GetStorage
   Future<void> _loadUserRole() async {
-    final role = UserStorage.getUserRole();
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
-    if (role == null) {
-      // Optionally fetch from Firestore if needed or wait a bit
-      await Future.delayed(Duration(milliseconds: 200)); // small delay
-      return _loadUserRole(); // retry (careful to avoid infinite loop)
+    // Try a few times only
+    const maxRetries = 5;
+    int retries = 0;
+
+    while (retries < maxRetries) {
+      if (!mounted) return;
+
+      final role = UserStorage.getUserRole();
+
+      if (role != null) {
+        if (!mounted) return;
+
+        setState(() {
+          userRole = role;
+          canAccessHome = role == 'Super Admin' || role == 'Admin';
+          isSpecialist = role == 'Specialist';
+          isLoading = false;
+        });
+
+        // ✅ Navigation OUTSIDE setState
+        if (isSpecialist && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              context.go('/navigation/bookings');
+            }
+          });
+        }
+
+        return; // ✅ EXIT once role is found
+      }
+
+      retries++;
+      await Future.delayed(const Duration(milliseconds: 200));
     }
 
-    setState(() {
-      userRole = role;
-      canAccessHome = role == 'Super Admin' || role == 'Admin';
-      isSpecialist = role == 'Specialist';
-      isLoading = false;
-
-      if (isSpecialist) {
-        Future.delayed(Duration.zero, () => context.go('/navigation/bookings'));
-      }
-    });
+    // Optional fallback
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
 
   // ✅ Fetch User Role from Firestore
@@ -308,6 +329,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     );
   }
 
+
   _buildVersionInfoWidget() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -316,13 +338,13 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         children: const [
           Divider(),
           Text(
-            'App Version: 2.0.7',
+            'App Version: 2.0.8',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
           SizedBox(height: 4),
 
           Text(
-            'Build Number: 7',
+            'Build Number: 8',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],

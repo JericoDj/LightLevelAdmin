@@ -72,7 +72,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       children: [
                         const Text("Safe Community Access"),
                         Switch(
-                          activeColor: MyColors.color1,
+                          activeColor: MyColors.color2,
                           value: safeCommunityAccess,
                           onChanged: (value) {
                             setState(() {
@@ -218,38 +218,53 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _firestore.collection("companies")
+                    stream: _firestore
+                        .collection("companies")
                         .doc(companyId)
                         .collection("users")
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData)
-                        return Center(child: CircularProgressIndicator());
-                      var users = snapshot.data!.docs;
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      // ✅ SORT USERS A → Z BY NAME
+                      final users = snapshot.data!.docs.toList()
+                        ..sort((a, b) {
+                          final nameA =
+                              (a.data() as Map<String, dynamic>)["name"]?.toString().toLowerCase() ?? "";
+                          final nameB =
+                              (b.data() as Map<String, dynamic>)["name"]?.toString().toLowerCase() ?? "";
+                          return nameA.compareTo(nameB);
+                        });
+
                       return ListView.builder(
                         itemCount: users.length,
                         itemBuilder: (context, index) {
-                          var user = users[index];
+                          final user = users[index];
+                          final data = user.data() as Map<String, dynamic>;
 
                           return Card(
                             margin: const EdgeInsets.symmetric(vertical: 5),
                             child: ListTile(
-                              title: Text(user["name"]),
-                              subtitle: Text(user["email"]),
+                              title: Text(data["name"] ?? ""),
+                              subtitle: Text(data["email"] ?? ""),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  /// ✅ TOGGLE ACTIVE
                                   IconButton(
                                     icon: Icon(
-                                      user["isActive"] ? Icons.check_circle : Icons.cancel,
+                                      data["isActive"] == true
+                                          ? Icons.check_circle
+                                          : Icons.cancel,
                                       color: Colors.green,
                                     ),
                                     onPressed: () async {
-                                      final String email = user["email"];
-                                      print("📧 Email: $email");
-                                      final bool newStatus = !user["isActive"];
+                                      final String email = data["email"];
+                                      final bool newStatus = !(data["isActive"] ?? false);
 
-                                      // 🔄 Update company user `isActive` status
+                                      // 🔄 Update company user `isActive`
                                       await _firestore
                                           .collection("companies")
                                           .doc(companyId)
@@ -257,7 +272,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                           .doc(user.id)
                                           .update({"isActive": newStatus});
 
-                                      // 🔄 Find user in top-level `users/` collection
+                                      // 🔄 Update global users access
                                       final userQuery = await _firestore
                                           .collection("users")
                                           .where("email", isEqualTo: email)
@@ -267,51 +282,49 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
                                       if (userQuery.docs.isNotEmpty) {
                                         final userDoc = userQuery.docs.first;
-                                        final userDocId = userDoc.id;
-                                        final currentAccess = userDoc.data()["access"] ?? true;
-
-                                        // 🟢 Toggle access
-                                        final newAccess = !currentAccess;
-
-                                        print("🧾 Current access: $currentAccess → New access: $newAccess");
+                                        final currentAccess =
+                                            userDoc.data()["access"] ?? true;
 
                                         await _firestore
                                             .collection("users")
-                                            .doc(userDocId)
-                                            .update({"access": newAccess});
-                                      } else {
-                                        print("⚠️ No matching user found in top-level 'users' collection.");
+                                            .doc(userDoc.id)
+                                            .update({"access": !currentAccess});
                                       }
                                     },
                                   ),
 
+                                  /// ✅ DELETE USER
                                   IconButton(
                                     icon: const Icon(Icons.delete, color: Colors.red),
                                     onPressed: () async {
                                       final bool? confirm = await showDialog<bool>(
                                         context: context,
-                                        builder: (BuildContext dialogContext) {
-                                          return AlertDialog(
-                                            title: const Text("Confirm Deletion"),
-                                            content: const Text("Are you sure you want to delete this user?"),
-                                            actions: [
-                                              TextButton(
-                                                child: const Text("Cancel"),
-                                                onPressed: () => Navigator.of(dialogContext).pop(false),
+                                        builder: (dialogContext) => AlertDialog(
+                                          title: const Text("Confirm Deletion"),
+                                          content: const Text(
+                                              "Are you sure you want to delete this user?"),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(dialogContext).pop(false),
+                                              child: const Text("Cancel"),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(dialogContext).pop(true),
+                                              child: const Text(
+                                                "Delete",
+                                                style: TextStyle(color: Colors.red),
                                               ),
-                                              TextButton(
-                                                child: const Text("Delete", style: TextStyle(color: Colors.red)),
-                                                onPressed: () => Navigator.of(dialogContext).pop(true),
-                                              ),
-                                            ],
-                                          );
-                                        },
+                                            ),
+                                          ],
+                                        ),
                                       );
 
                                       if (confirm == true) {
-                                        final String email = user["email"];
+                                        final String email = data["email"];
 
-                                        // Step 1: Delete from companies/{companyId}/users
+                                        // ✅ Delete from company users
                                         await _firestore
                                             .collection("companies")
                                             .doc(companyId)
@@ -319,12 +332,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                             .doc(user.id)
                                             .delete();
 
-                                        // ✅ Debug log before Step 2
-                                        debugPrint("🟡 Proceeding to global users query with:");
-                                        debugPrint("📧 Email: $email");
-                                        debugPrint("🏢 Company ID: $companyId");
-
-                                        // Step 2: Find and delete from global users collection
+                                        // ✅ Delete from global users
                                         final userQuery = await _firestore
                                             .collection("users")
                                             .where("email", isEqualTo: email)
@@ -334,35 +342,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
                                         if (userQuery.docs.isNotEmpty) {
                                           final userDoc = userQuery.docs.first;
-                                          final uid = userDoc["uid"];
-                                          final docId = userDoc.id;
-
-                                          debugPrint("🟢 Step 3: Ready to delete from Firebase Auth");
-                                          debugPrint("📄 Firestore docId: $docId");
-                                          debugPrint("🔐 UID to delete: $uid");
-
-                                          await _deleteUser(context, uid, docId); // pass context to _deleteUser
-                                        } else {
-                                          debugPrint("🔴 No matching document found in global users collection.");
+                                          await _deleteUser(
+                                            context,
+                                            userDoc["uid"],
+                                            userDoc.id,
+                                          );
                                         }
                                       }
                                     },
                                   ),
-
-
-
-
-
                                 ],
                               ),
                             ),
                           );
-
                         },
                       );
                     },
                   ),
                 ),
+
 
 
                 // **Footer**
@@ -566,12 +564,22 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               Text(
                                   "ID: ${company["companyId"]} | Role: $companyRole"),
                               // ✅ Show Safe Community Access ONLY for "User" role
+
+                            ],
+                          ),
+
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+
                               if (companyRole == "User")
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment
-                                      .spaceBetween,
+                                      .end,
                                   children: [
-                                    const Text("Safe Community Access"),
+                                    const Text(
+                                        style: TextStyle(fontSize: 14),
+                                        "Safe Community Access"),
                                     Switch(
                                       activeColor: MyColors.color1,
                                       value: safeCommunityAccess,
@@ -584,12 +592,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                     ),
                                   ],
                                 ),
-                            ],
-                          ),
-
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
                               IconButton(
                                 icon: Icon(Icons.edit, color: MyColors.color2),
                                 onPressed: () =>
