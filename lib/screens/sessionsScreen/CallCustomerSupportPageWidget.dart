@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 // ignore: must_be_immutable
-class CallPageWidget extends StatefulWidget {
+class CallCustomerSupportPageWidget extends StatefulWidget {
   bool connectingLoading;
   String roomId;
   bool isCaller;
@@ -14,12 +14,11 @@ class CallPageWidget extends StatefulWidget {
   VoidCallback toggleMic;
   VoidCallback toggleCamera;
   VoidCallback switchCamera;
+
   bool isAudioOn;
 
 
-
-
-  CallPageWidget({
+  CallCustomerSupportPageWidget({
     super.key,
     required this.connectingLoading,
     required this.roomId,
@@ -35,11 +34,11 @@ class CallPageWidget extends StatefulWidget {
   });
 
   @override
-  State<CallPageWidget> createState() =>
-      _CallPageWidgetState();
+  State<CallCustomerSupportPageWidget> createState() =>
+      _CallCustomerSupportPageWidgetState();
 }
 
-class _CallPageWidgetState extends State<CallPageWidget> {
+class _CallCustomerSupportPageWidgetState extends State<CallCustomerSupportPageWidget> {
   bool isMicMuted = false;
 
   @override
@@ -109,7 +108,20 @@ class _CallPageWidgetState extends State<CallPageWidget> {
                     ),
 
                     // 📷 CAMERA
-
+                    // GestureDetector(
+                    //   onTap: widget.toggleCamera,
+                    //   child: Column(
+                    //     children: [
+                    //       _circleButton(
+                    //         icon: widget.isVideoOn
+                    //             ? Icons.videocam
+                    //             : Icons.videocam_off,
+                    //       ),
+                    //       const SizedBox(height: 8),
+                    //       Text(widget.isVideoOn ? "Camera On" : "Camera Off"),
+                    //     ],
+                    //   ),
+                    // ),
                   ],
                 ),
 

@@ -7,6 +7,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:provider/provider.dart';
 
 import '../test/test/services/webrtc_service.dart';
+import 'CallCustomerSupportPageWidget.dart';
 import 'CallPageWidget.dart';
 
 class CallCustomerSupportPage extends StatefulWidget {
@@ -40,13 +41,11 @@ class _CallCustomerSupportPageState extends State<CallCustomerSupportPage> {
 
   // media state
   bool isAudioOn = true;
-<<<<<<< HEAD
- vid bool isVideoOn = false;
-  bool isFrontCameraSelected = true;
-=======
+
+
   bool isVideoOn = false;
   bool isFrontCameraSelected = false;
->>>>>>> 747514d (Fix all the bugs on audio)
+
 
   @override
   void initState() {
@@ -232,7 +231,7 @@ class _CallCustomerSupportPageState extends State<CallCustomerSupportPage> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 26, 26, 26),
 
-      body: CallPageWidget(
+      body: CallCustomerSupportPageWidget(
         connectingLoading: connectingLoading,
         roomId: widget.roomId ?? "",
         remoteVideo: remoteVideo,
@@ -243,7 +242,7 @@ class _CallCustomerSupportPageState extends State<CallCustomerSupportPage> {
         toggleMic: _toggleMic,
         isAudioOn: isAudioOn,
         // isVideoOn: isVideoOn,
-        isCaller: widget.isCaller,
+        isCaller: widget.isCaller, toggleCamera: () {  }, switchCamera: () {  },
       ),
     );
   }

@@ -255,7 +255,7 @@ class _CallPageState extends State<CallPage> {
         toggleMic: _toggleMic,
         isAudioOn: isAudioOn,
         // isVideoOn: isVideoOn,
-        isCaller: widget.isCaller,
+        isCaller: widget.isCaller, toggleCamera: () {  }, switchCamera: () {  },
       ),
     );
   }
