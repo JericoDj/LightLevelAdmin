@@ -1,5 +1,6 @@
 
 import 'package:dio/dio.dart' as dio;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -180,7 +181,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     await _firestore.collection("companies").doc(companyId).delete();
   }
 
-  void _showUsersDialog(String companyId, String companyName) {
+  void _showUsersDialog(String companyId, String companyName, String role) {
     showDialog(
       context: context,
       builder: (context) {
@@ -201,17 +202,54 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // **Header**
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Column(
                   children: [
-                    Text(
-                      "$companyName - Users",
-                      style: TextStyle(fontWeight: FontWeight.bold,
-                          color: MyColors.color2,
-                          fontSize: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "$companyName",
+                          style: TextStyle(fontWeight: FontWeight.bold,
+                              color: MyColors.color2,
+                              fontSize: 20),
+                        ),
+                        IconButton(icon: Icon(Icons.close, color: Colors.red),
+                            onPressed: () => Navigator.pop(context)),
+                      ],
                     ),
-                    IconButton(icon: Icon(Icons.close, color: Colors.red),
-                        onPressed: () => Navigator.pop(context)),
+                    Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Row(
+                          children: [
+                            Row(
+                              children: [
+                                Text("ID: "),
+                                Text( style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: MyColors.color1,
+                                  fontSize: 14  ,
+
+                                ),
+                                    "$companyId" ),
+                                Text(" |"),
+                              ],
+                            ),
+
+                            Row(
+                              children: [
+                                Text(" Role: "),
+                                Text(
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: MyColors.color1,
+                                      fontSize: 14  ,
+
+                                    ),
+                                    "$role"),
+                              ],
+                            ),
+                          ],
+                        )),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -363,6 +401,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
 
 
+
                 // **Footer**
                 ElevatedButton.icon(
                   onPressed: () => _showUserDialog(companyId),
@@ -441,61 +480,281 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showUserDialog(String companyId) {
-    TextEditingController nameController = TextEditingController();
-    TextEditingController emailController = TextEditingController();
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController emailController = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Add User", style: TextStyle(color: MyColors.color2),),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameController,
-                  decoration: InputDecoration(labelText: "Full Name")),
-              TextField(controller: emailController,
-                  decoration: InputDecoration(labelText: "Email")),
-            ],
-          ),
-          actions: [
-            TextButton(
-                style: TextButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () => Navigator.pop(context), child: Text("Cancel", style: TextStyle(color: Colors.white),)),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: MyColors.color2),
-              onPressed: () async {
-                if (nameController.text.isNotEmpty &&
-                    emailController.text.isNotEmpty) {
-                  var existingUser = await _firestore.collection("users").where(
-                      "email", isEqualTo: emailController.text).get();
-                  bool hasAccount = existingUser.docs.isNotEmpty;
+      barrierDismissible: false, // 🔒 prevent accidental close while loading
+      builder: (dialogContext) {
+        bool isLoading = false;
 
-                  await _firestore.collection("companies")
-                      .doc(companyId)
-                      .collection("users")
-                      .add({
-                    "name": nameController.text,
-                    "email": emailController.text,
-                    "isActive": true,
-                    "hasAccount": hasAccount,
-                  });
-                }
-                Navigator.pop(context);
-              },
-              child: Text("Add User", style: TextStyle(color: MyColors.white),),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: SizedBox(
+                  width: MediaQuery.sizeOf(context).width * (kIsWeb ? 0.3 : 0.9),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      /// ✅ TITLE
+                      Text(
+                        "Add User",
+                        style: TextStyle(
+                          color: MyColors.color2,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      /// ✅ NAME
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: "Full Name",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      /// ✅ EMAIL
+                      TextField(
+                        controller: emailController,
+                        decoration: const InputDecoration(
+                          labelText: "Email",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      /// ✅ ACTIONS
+                      Row(
+                        children: [
+                          /// ❌ CANCEL
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: isLoading
+                                  ? null
+                                  : () => Navigator.pop(dialogContext),
+                              child: Container(
+                                padding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  "Cancel",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          /// ✅ ADD USER
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: isLoading
+                                  ? null
+                                  : () async {
+                                final name =
+                                nameController.text.trim();
+                                final email = emailController.text
+                                    .trim()
+                                    .toLowerCase();
+
+                                if (name.isEmpty || email.isEmpty) return;
+
+                                setDialogState(() => isLoading = true);
+
+                                try {
+                                  /// 🔍 CHECK ALL COMPANIES → USERS
+                                  final companiesSnapshot =
+                                  await _firestore
+                                      .collection("companies")
+                                      .get();
+
+                                  bool emailExists = false;
+
+                                  for (final company
+                                  in companiesSnapshot.docs) {
+                                    final usersSnapshot =
+                                    await _firestore
+                                        .collection("companies")
+                                        .doc(company.id)
+                                        .collection("users")
+                                        .where("email",
+                                        isEqualTo: email)
+                                        .limit(1)
+                                        .get();
+
+                                    if (usersSnapshot.docs.isNotEmpty) {
+                                      emailExists = true;
+                                      break;
+                                    }
+                                  }
+
+                                  /// ❌ EMAIL EXISTS
+                                  if (emailExists) {
+                                    Navigator.pop(dialogContext);
+
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(
+                                      SnackBar(
+                                        content: const Text(
+                                          "❌ This email already exists in another company.",
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior:
+                                        SnackBarBehavior.floating,
+                                        margin: EdgeInsets.fromLTRB(
+                                          16,
+                                          20,
+                                          16,
+                                          MediaQuery.of(context)
+                                              .size
+                                              .height -
+                                              120,
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  /// 🔍 CHECK GLOBAL USERS
+                                  final globalUserQuery =
+                                  await _firestore
+                                      .collection("users")
+                                      .where("email",
+                                      isEqualTo: email)
+                                      .limit(1)
+                                      .get();
+
+                                  final bool hasAccount =
+                                      globalUserQuery.docs.isNotEmpty;
+
+                                  /// ✅ ADD USER
+                                  await _firestore
+                                      .collection("companies")
+                                      .doc(companyId)
+                                      .collection("users")
+                                      .add({
+                                    "name": name,
+                                    "email": email,
+                                    "isActive": true,
+                                    "hasAccount": hasAccount,
+                                    "createdAt":
+                                    FieldValue.serverTimestamp(),
+                                  });
+
+                                  Navigator.pop(dialogContext);
+
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                          "✅ User added successfully."),
+                                      backgroundColor: MyColors.color1,
+                                      behavior:
+                                      SnackBarBehavior.floating,
+                                      margin: EdgeInsets.fromLTRB(
+                                        16,
+                                        20,
+                                        16,
+                                        MediaQuery.of(context)
+                                            .size
+                                            .height -
+                                            120,
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  Navigator.pop(dialogContext);
+
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          "❌ Failed to add user: $e"),
+                                      backgroundColor: Colors.red,
+                                      behavior:
+                                      SnackBarBehavior.floating,
+                                      dismissDirection:
+                                      DismissDirection.up,
+                                      margin: EdgeInsets.fromLTRB(
+                                        16,
+                                        20,
+                                        16,
+                                        MediaQuery.of(context)
+                                            .size
+                                            .height -
+                                            120,
+                                      ),
+                                    ),
+                                  );
+                                } finally {
+                                  if (mounted) {
+                                    setDialogState(
+                                            () => isLoading = false);
+                                  }
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: MyColors.color2,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                alignment: Alignment.center,
+                                child: isLoading
+                                    ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor:
+                                    AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                )
+                                    : Text(
+                                  "Add User",
+                                  style: TextStyle(
+                                      color: MyColors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(50), // <-- set your desired height here
+
         child: AppBar(
           title: Align(
             alignment: AlignmentDirectional.centerStart,
@@ -556,7 +815,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         margin: const EdgeInsets.symmetric(vertical: 5),
                         child: ListTile(
                           onTap: () => _showUsersDialog(
-                              company["companyId"], company["name"]),
+                              company["companyId"], company["name"], company["role"]),
                           title: Text("${company["name"]}"),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

@@ -189,15 +189,51 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                   ? const Center(child: CircularProgressIndicator()) // ⏳ Show loading
                   : (userRole == null)
                   ? _noUserFoundWidget() // ❌ Handle no user case
-                  : (userRole == 'Super Admin' || userRole == 'Admin' || userRole== "Corporate"|| isSpecialist)
-                  ? widget.child // ✅ Authorized access
-                  : _restrictedAccessWidget(), // ❌ Unauthorized access
+                  : _canAccessRoute(
+                userRole!,
+                GoRouter.of(context)
+                    .routeInformationProvider
+                    .value
+                    .uri
+                    .toString(),
+              )
+                  ? widget.child
+                  : _restrictedAccessWidget(),
             ),
           ],
         ),
       ),
     );
   }
+
+  bool _canAccessRoute(String role, String route) {
+    // SUPER ADMIN → all access
+    if (role == 'Super Admin') return true;
+
+    // ADMIN
+    if (role == 'Admin') {
+      return [
+        '/navigation/home',
+        '/navigation/sessions',
+        '/navigation/bookings',
+        '/navigation/tickets',
+        '/navigation/community',
+      ].any(route.startsWith);
+    }
+
+    // SPECIALIST
+    if (role == 'Specialist') {
+      return route.startsWith('/navigation/bookings');
+    }
+
+    // CORPORATE
+    if (role == 'Corporate') {
+      return route.startsWith('/navigation/dataanalytics');
+    }
+
+    return false;
+  }
+
 
   Widget _noUserFoundWidget() {
     return const Center(
@@ -250,8 +286,6 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         ];
       case 'Corporate':
         return [
-
-
           _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics', '/navigation/dataanalytics'),
           _buildLogoutItem(context),
         ];;
@@ -338,13 +372,13 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         children: const [
           Divider(),
           Text(
-            'App Version: 2.0.8',
+            'App Version: 2.0.9',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
           SizedBox(height: 4),
 
           Text(
-            'Build Number: 8',
+            'Build Number: 9',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],

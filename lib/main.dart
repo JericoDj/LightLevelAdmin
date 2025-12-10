@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:lightlevelpsychosolutionsadmin/providers/auth_listener_provider.dart';
 import 'package:lightlevelpsychosolutionsadmin/routes/router.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/test/test/services/webrtc_service.dart';
@@ -25,6 +26,7 @@ void main() async {
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => WebRtcService()),
+          ChangeNotifierProvider(create: (_) => AuthListenerProvider()),
         ],
         child: MyApp(), // Your main app widget
       ),);

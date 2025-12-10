@@ -39,28 +39,39 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || currentAdminUid == null) return;
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || currentAdminUid == null) return;
 
-    final sessionRef = FirebaseFirestore.instance.collection("safe_talk/chat/queue").doc(widget.userId);
+    final sessionRef = FirebaseFirestore.instance
+        .collection("safe_talk/chat/queue")
+        .doc(widget.userId);
+
     final sessionSnapshot = await sessionRef.get();
+
+    if (!mounted) return; // ✅ important
 
     // Check if chat is finished/cancelled
     if (sessionSnapshot.exists) {
       final status = sessionSnapshot.data()?['status'];
       if (status == "finished" || status == "cancelled") {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ This chat session is closed. No more messages allowed.")),
+          const SnackBar(
+            content: Text("❌ This chat session is closed. No more messages allowed."),
+          ),
         );
         return;
       }
     }
 
+    // ✅ Cache message before await
     await FirebaseFirestore.instance.collection(chatRoomId).add({
       "senderId": currentAdminUid,
-      "message": _messageController.text.trim(),
+      "message": text,
       "timestamp": FieldValue.serverTimestamp(),
     });
+
+    if (!mounted) return; // ✅ protect UI calls
 
     _messageController.clear();
     _scrollToBottom();
@@ -218,7 +229,36 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
 
-        title: Text("Chat Session with ${widget.fullName}"),
+        title:
+
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+
+        Container(child: Text("Chat Session with ${widget.fullName}")),
+          Container(child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: _finishChat,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  child: const Text("Finish Chat", style: TextStyle(color: Colors.white),),
+                ),
+                const SizedBox(width: 10,),
+                ElevatedButton(
+                  onPressed: _cancelChat,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text("Cancel Chat", style: TextStyle(color: Colors.white),),
+                ),
+              ],
+            ),
+          ),)
+
+
+        ],),
         automaticallyImplyLeading: false,
 
       ),
@@ -305,9 +345,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     Expanded(
                       child: TextField(
                         controller: _messageController,
+                        maxLines: 3, // ✅ REQUIRED FOR WEB
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) =>{
+                          _sendMessage()
+                        }, // ✅ Enter triggers
                         decoration: InputDecoration(
                           hintText: "Type a message...",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
@@ -320,24 +367,7 @@ class _ChatScreenState extends State<ChatScreen> {
               );
             },
           ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: _finishChat,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  child: const Text("Finish Chat", style: TextStyle(color: Colors.white),),
-                ),
-                ElevatedButton(
-                  onPressed: _cancelChat,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: const Text("Cancel Chat", style: TextStyle(color: Colors.white),),
-                ),
-              ],
-            ),
-          ),
+
         ],
       ),
     );

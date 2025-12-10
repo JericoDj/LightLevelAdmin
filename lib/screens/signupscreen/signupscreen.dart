@@ -176,13 +176,31 @@ class SignUpScreen extends StatelessWidget {
                     const SizedBox(height: 20),
 
                     // Already have an account? Login
-                    TextButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text(
-                        "Already have an account? Login",
-                        style: TextStyle(color: MyColors.color2),
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "Already have an account? ",
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 14,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.go('/login'),
+                          child: const Text(
+                            "Login",
+                            style: TextStyle(
+                              color: MyColors.color2,
+
+                              fontWeight: FontWeight.bold,
+
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+
                   ],
                 ),
               ),
