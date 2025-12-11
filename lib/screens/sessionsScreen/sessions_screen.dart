@@ -1,6 +1,8 @@
+import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:go_router/go_router.dart';
 import '../../controllers/session_controller.dart';
 
 class SessionsScreen extends StatefulWidget {
@@ -11,8 +13,78 @@ class SessionsScreen extends StatefulWidget {
 class _SessionsScreenState extends State<SessionsScreen> {
   final SessionsController controller = SessionsController();
 
+  late AudioPlayer _player;
 
-  // ✅ Show Status Update Dialog
+  int _lastChatQueueCount = 0;
+  int _lastTalkQueueCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _player = AudioPlayer();
+    _listenForQueueAlerts();
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  /// --------------------------
+  /// 🔔 PLAY ALERT SOUND
+  /// --------------------------
+  Future<void> _playAlertSound() async {
+    try {
+      if (kIsWeb) {
+        // Web must use URLSource
+        await _player.play(
+          UrlSource("assets/notify.mp3"),
+          volume: 1.0,
+        );
+      } else {
+        await _player.play(
+          AssetSource("notify.mp3"), // asset path is auto-resolved
+          volume: 1.0,
+        );
+      }
+    } catch (e) {
+      print("Sound error → $e");
+    }
+  }
+
+  /// --------------------------
+  /// 🔍 LISTEN FOR NEW QUEUE USERS
+  /// --------------------------
+  void _listenForQueueAlerts() {
+    // CHAT QUEUE
+    controller.getConsultationsStream("queue", "Chat").listen((snapshot) {
+      final count = snapshot.docs.length;
+
+      if (count > _lastChatQueueCount) {
+        _playAlertSound();
+      }
+
+      _lastChatQueueCount = count;
+    });
+
+    // TALK QUEUE
+    controller.getConsultationsStream("queue", "Talk").listen((snapshot) {
+      final count = snapshot.docs.length;
+
+      if (count > _lastTalkQueueCount) {
+        _playAlertSound();
+      }
+
+      _lastTalkQueueCount = count;
+    });
+  }
+
+  // -----------------------------------------------------------
+  // Your UI Components (UNCHANGED)
+  // -----------------------------------------------------------
+
   void _showStatusDialog(BuildContext context, String userId, String sessionType) {
     showDialog(
       context: context,
@@ -25,7 +97,12 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 .map((status) => ListTile(
               title: Text(status),
               onTap: () {
-                controller.updateStatus(context, userId, sessionType, status.toLowerCase());
+                controller.updateStatus(
+                  context,
+                  userId,
+                  sessionType,
+                  status.toLowerCase(),
+                );
                 Navigator.pop(dialogContext);
               },
             ))
@@ -39,7 +116,6 @@ class _SessionsScreenState extends State<SessionsScreen> {
     );
   }
 
-  // ✅ Build Consultation Sections
   Widget _buildConsultationSection(String title, String status, String sessionType, Color headerColor) {
     return Expanded(
       child: SizedBox(
@@ -48,7 +124,6 @@ class _SessionsScreenState extends State<SessionsScreen> {
           elevation: 2,
           margin: const EdgeInsets.all(8),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
@@ -72,8 +147,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                     return ListView.builder(
                       itemCount: snapshot.data!.docs.length,
                       itemBuilder: (context, index) {
-                        var doc = snapshot.data!.docs[index];
-                        var data = doc.data() as Map<String, dynamic>;
+                        var data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
                         return _buildSessionCard(context, status, data);
                       },
                     );
@@ -87,7 +161,6 @@ class _SessionsScreenState extends State<SessionsScreen> {
     );
   }
 
-  // ✅ Session Card
   Widget _buildSessionCard(BuildContext context, String status, Map<String, dynamic> data) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
@@ -97,7 +170,6 @@ class _SessionsScreenState extends State<SessionsScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -111,20 +183,26 @@ class _SessionsScreenState extends State<SessionsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text("User: ${data["fullName"] ?? "Unknown"}",
-                        style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text("Company Id: ${data["companyId"] ?? "Unknown"}",
-                        style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text("Session: ${data["sessionType"] ?? "Unknown"}", style: TextStyle(color: Colors.grey.shade700)),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text("Company: ${data["companyId"] ?? "Unknown"}",
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text("Session: ${data["sessionType"] ?? "Unknown"}",
+                        style: TextStyle(color: Colors.grey.shade700)),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: _buildActionButtons(context, status, data["userId"], data["sessionType"], data["fullName"] ?? "Unknown", data["companyId"] ?? "Unknown"),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: _buildActionButtons(
+              context,
+              status,
+              data["userId"],
+              data["sessionType"],
+              data["fullName"] ?? "Unknown",
+              data["companyId"] ?? "Unknown",
             ),
           ),
         ],
@@ -132,49 +210,27 @@ class _SessionsScreenState extends State<SessionsScreen> {
     );
   }
 
-  // ✅ Generate Action Buttons
-  List<Widget> _buildActionButtons(BuildContext context, String status, String userId, String sessionType, String fullName, String companyId) {
+  List<Widget> _buildActionButtons(
+      BuildContext context, String status, String userId, String sessionType, String fullName, String companyId) {
     if (status == "queue") {
       return [
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
           child: const Text("Admit", style: TextStyle(color: Colors.white)),
           onPressed: () async {
-            await controller.admitUser(
-              context,
-              userId,
-              sessionType,
-              fullName,
-              companyId,
-            );
-
-            controller.openSession(
-              userId,
-              sessionType,
-              fullName,
-              companyId,
-            );
+            await controller.admitUser(context, userId, sessionType, fullName, companyId);
+            controller.openSession(userId, sessionType, fullName, companyId);
           },
         ),
-
       ];
-    } else if (status == "ongoing" || status == "finished") {
+    }
+
+    if (status == "ongoing" || status == "finished") {
       return [
-        // ElevatedButton(
-        //   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-        //     child: Text(
-        //         style: const TextStyle(color: Colors.white),
-        //         "Open"),
-        //   onPressed: () async {
-        //     controller.openSession( userId, sessionType, fullName, companyId);
-        //
-        //
-        //   }
-        // ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
           onPressed: () => _showStatusDialog(context, userId, sessionType),
-          child: const Text("Change Status", style: TextStyle(color: Colors.white),),
+          child: const Text("Change Status", style: TextStyle(color: Colors.white)),
         ),
       ];
     }
@@ -183,27 +239,10 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final rootContext = context;
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(50), // <-- set your desired height here
-        child: AppBar(
-          title: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: const Text(
-                'Session Management',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24  ,
-                ),
-              ),
-            ),
-          ),
-          backgroundColor: Colors.green[800],
-          elevation: 0,
-        ),
+      appBar: AppBar(
+        title: const Text("Session Management", style: TextStyle(fontSize: 22)),
+        backgroundColor: Colors.green[800],
       ),
       body: SingleChildScrollView(
         child: Column(

@@ -18,6 +18,9 @@ class UserManagementScreen extends StatefulWidget {
 class _UserManagementScreenState extends State<UserManagementScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  TextEditingController searchController = TextEditingController();
+  String searchQuery = "";
+
 
   void _showCompanyDialog(
       {String? companyId, String? existingName, String? existingRole, bool? existingSafeAccess}) {
@@ -192,281 +195,264 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showUsersDialog(String companyId, String companyName, String role) {
+    String userSearch = "";
+
     showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
-          child: Container(
-            width: MediaQuery
-                .of(context)
-                .size
-                .width * 0.7,
-            height: MediaQuery
-                .of(context)
-                .size
-                .height * 0.7,
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // **Header**
-                Column(
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.7,
+                height: MediaQuery.of(context).size.height * 0.7,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // HEADER
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "$companyName",
-                          style: TextStyle(fontWeight: FontWeight.bold,
-                              color: MyColors.color2,
-                              fontSize: 20),
+                          companyName,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: MyColors.color2,
+                          ),
                         ),
-                        IconButton(icon: Icon(Icons.close, color: Colors.red),
-                            onPressed: () => Navigator.pop(context)),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ],
                     ),
-                    Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: Row(
-                          children: [
-                            Row(
-                              children: [
-                                Text("ID: "),
-                                Text( style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: MyColors.color1,
-                                  fontSize: 14  ,
+
+                    Text("ID: $companyId | Role: $role"),
+
+                    const SizedBox(height: 16),
+
+                    // 🔍 SEARCH FIELD
+                    TextField(
+                      decoration: InputDecoration(
+                        hintText: "Search user...",
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          userSearch = value.toLowerCase().trim();
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // USERS LIST
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: _firestore
+                            .collection("companies")
+                            .doc(companyId)
+                            .collection("users")
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+
+                          // ORIGINAL USERS
+                          final allUsers = snapshot.data!.docs.toList()
+                            ..sort((a, b) {
+                              final nameA = (a.data()
+                              as Map<String, dynamic>)["name"]
+                                  ?.toString()
+                                  .toLowerCase() ??
+                                  "";
+                              final nameB = (b.data()
+                              as Map<String, dynamic>)["name"]
+                                  ?.toString()
+                                  .toLowerCase() ??
+                                  "";
+                              return nameA.compareTo(nameB);
+                            });
+
+                          // FILTER USERS
+                          final users = allUsers.where((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final name = data["name"]?.toString().toLowerCase() ?? "";
+                            final email =
+                                data["email"]?.toString().toLowerCase() ?? "";
+
+                            return name.contains(userSearch) ||
+                                email.contains(userSearch);
+                          }).toList();
+
+                          if (users.isEmpty) {
+                            return const Center(
+                              child: Text("No users found."),
+                            );
+                          }
+
+                          return ListView.builder(
+                            itemCount: users.length,
+                            itemBuilder: (context, index) {
+                              final user = users[index];
+                              final data = user.data() as Map<String, dynamic>;
+
+                              return Card(
+                                margin: const EdgeInsets.symmetric(vertical: 5),
+                                child: ListTile(
+                                  title: Text(data["name"] ?? ""),
+                                  subtitle: Text(data["email"] ?? ""),
+
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // ACTIVATE / DEACTIVATE
+                                        IconButton(
+                                          icon: Icon(
+                                            data["isActive"] == true ? Icons.check_circle : Icons.cancel,
+                                            color: Colors.green,
+                                          ),
+                                          onPressed: () async {
+                                            final newStatus = !(data["isActive"] ?? false);
+
+                                            await _firestore
+                                                .collection("companies")
+                                                .doc(companyId)
+                                                .collection("users")
+                                                .doc(user.id)
+                                                .update({"isActive": newStatus});
+                                          },
+                                        ),
+
+                                        // DELETE USER
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, color: Colors.red),
+                                          onPressed: () async {
+                                            /// 🔥 IMPORTANT: capture SAFE context before dialog closes
+                                            final rootContext = context;
+
+                                            final confirm = await showDialog<bool>(
+                                              context: context,
+                                              builder: (_) => AlertDialog(
+                                                title: const Text("Confirm Deletion"),
+                                                content: const Text("Delete this user?"),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(rootContext, false),
+                                                    child: const Text("Cancel"),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(rootContext, true),
+                                                    child: const Text(
+                                                      "Delete",
+                                                      style: TextStyle(color: Colors.red),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+
+                                            if (confirm != true) return;
+
+                                            final email = data["email"];
+
+                                            // DELETE mini user
+                                            await _firestore
+                                                .collection("companies")
+                                                .doc(companyId)
+                                                .collection("users")
+                                                .doc(user.id)
+                                                .delete();
+
+                                            // GET company role
+                                            final companyDoc =
+                                            await _firestore.collection("companies").doc(companyId).get();
+                                            final companyRole =
+                                                companyDoc.data()?["role"]?.toString().toLowerCase() ?? "user";
+
+                                            // DELETE ADMIN
+                                            if (companyRole != "user") {
+                                              final adminQuery = await _firestore
+                                                  .collection("admins")
+                                                  .where("email", isEqualTo: email)
+                                                  .limit(1)
+                                                  .get();
+
+                                              if (adminQuery.docs.isNotEmpty) {
+                                                await _deleteAdmin(rootContext, adminQuery.docs.first.id);
+                                              }
+                                            }
+
+                                            // DELETE global user
+                                            final userQuery = await _firestore
+                                                .collection("users")
+                                                .where("email", isEqualTo: email)
+                                                .where("companyId", isEqualTo: companyId)
+                                                .limit(1)
+                                                .get();
+
+                                            if (userQuery.docs.isNotEmpty) {
+                                              final doc = userQuery.docs.first;
+                                              await _deleteUser(rootContext, doc["uid"], doc.id);
+                                            }
+
+                                            /// SAFE SNACKBAR — use ROOT CONTEXT
+                                            if (rootContext.mounted) {
+                                              ScaffoldMessenger.of(rootContext).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text("User deleted successfully."),
+                                                  backgroundColor: Colors.green,
+                                                ),
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
 
                                 ),
-                                    "$companyId" ),
-                                Text(" |"),
-                              ],
-                            ),
-
-                            Row(
-                              children: [
-                                Text(" Role: "),
-                                Text(
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: MyColors.color1,
-                                      fontSize: 14  ,
-
-                                    ),
-                                    "$role"),
-                              ],
-                            ),
-                          ],
-                        )),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _firestore
-                        .collection("companies")
-                        .doc(companyId)
-                        .collection("users")
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      // ✅ SORT USERS A → Z BY NAME
-                      final users = snapshot.data!.docs.toList()
-                        ..sort((a, b) {
-                          final nameA =
-                              (a.data() as Map<String, dynamic>)["name"]?.toString().toLowerCase() ?? "";
-                          final nameB =
-                              (b.data() as Map<String, dynamic>)["name"]?.toString().toLowerCase() ?? "";
-                          return nameA.compareTo(nameB);
-                        });
-
-                      return ListView.builder(
-                        itemCount: users.length,
-                        itemBuilder: (context, index) {
-                          final user = users[index];
-                          final data = user.data() as Map<String, dynamic>;
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 5),
-                            child: ListTile(
-                              title: Text(data["name"] ?? ""),
-                              subtitle: Text(data["email"] ?? ""),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  /// ✅ TOGGLE ACTIVE
-                                  IconButton(
-                                    icon: Icon(
-                                      data["isActive"] == true
-                                          ? Icons.check_circle
-                                          : Icons.cancel,
-                                      color: Colors.green,
-                                    ),
-                                    onPressed: () async {
-                                      final String email = data["email"];
-                                      final bool newStatus = !(data["isActive"] ?? false);
-
-                                      // 🔄 Update company user `isActive`
-                                      await _firestore
-                                          .collection("companies")
-                                          .doc(companyId)
-                                          .collection("users")
-                                          .doc(user.id)
-                                          .update({"isActive": newStatus});
-
-                                      // 🔄 Update global users access
-                                      final userQuery = await _firestore
-                                          .collection("users")
-                                          .where("email", isEqualTo: email)
-                                          .where("companyId", isEqualTo: companyId)
-                                          .limit(1)
-                                          .get();
-
-                                      if (userQuery.docs.isNotEmpty) {
-                                        final userDoc = userQuery.docs.first;
-                                        final currentAccess =
-                                            userDoc.data()["access"] ?? true;
-
-                                        await _firestore
-                                            .collection("users")
-                                            .doc(userDoc.id)
-                                            .update({"access": !currentAccess});
-                                      }
-                                    },
-                                  ),
-
-                                  /// ✅ DELETE USER
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () async {
-                                      final bool? confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (dialogContext) => AlertDialog(
-                                          title: const Text("Confirm Deletion"),
-                                          content: const Text(
-                                              "Are you sure you want to delete this user?"),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(dialogContext).pop(false),
-                                              child: const Text("Cancel"),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(dialogContext).pop(true),
-                                              child: const Text(
-                                                "Delete",
-                                                style: TextStyle(color: Colors.red),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-
-                                      if (confirm == true) {
-                                        final String email = data["email"];
-
-                                        // ✅ Delete from company users
-                                        await _firestore
-                                            .collection("companies")
-                                            .doc(companyId)
-                                            .collection("users")
-                                            .doc(user.id)
-                                            .delete();
-
-                                        final doc = await FirebaseFirestore.instance
-                                            .collection("companies")
-                                            .doc(companyId)
-                                            .get();
-
-                                        final companyRole = doc.data()?['role'];
-
-                                        QuerySnapshot<Map<String, dynamic>>? adminQuery;
-
-                                        if (companyRole.toLowerCase() != "user") {
-                                          adminQuery = await _firestore
-                                              .collection("admins")
-                                              .where("email", isEqualTo: email)
-                                              .limit(1)
-                                              .get();
-                                        }
-
-                                        print("here is the admin doc");
-                                        print(adminQuery);
-
-                                        if (adminQuery != null && adminQuery.docs.isNotEmpty) {
-                                          final docId = adminQuery.docs.first.id;
-                                          print("Document ID: $docId");
-                                          print("Document ID: $docId");
-
-                                          await _deleteAdmin(
-                                            context,
-                                            docId,
-                                          );
-                                        } else {
-                                          print("No admin document found");
-
-
-                                        }
-
-
-
-
-
-
-                                        // ✅ Delete from global users
-                                        final userQuery = await _firestore
-                                            .collection("users")
-                                            .where("email", isEqualTo: email)
-                                            .where("companyId", isEqualTo: companyId)
-                                            .limit(1)
-                                            .get();
-
-                                        if (userQuery.docs.isNotEmpty) {
-                                          final userDoc = userQuery.docs.first;
-                                          await _deleteUser(
-                                            context,
-                                            userDoc["uid"],
-                                            userDoc.id,
-                                          );
-                                        }
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+
+                    // ADD USER BUTTON
+                    ElevatedButton.icon(
+                      onPressed: () => _showUserDialog(companyId),
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: Text(
+                        "Add User",
+                        style: TextStyle(color: MyColors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MyColors.color2,
+                      ),
+                    ),
+                  ],
                 ),
-
-
-
-
-                // **Footer**
-                ElevatedButton.icon(
-                  onPressed: () => _showUserDialog(companyId),
-                  icon: Icon(Icons.add, color: Colors.white),
-                  label: Text("Add User",style: TextStyle(color: MyColors.white),),
-
-                  style: ElevatedButton.styleFrom(backgroundColor: MyColors.color2),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
   }
+
+
+
 
   Future<void> _deleteAdmin(BuildContext context, String uid) async {
     try {
@@ -669,6 +655,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               ),
                             ),
                           ),
+
+                          // Row(
+                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          //   children: [
+                          //     ElevatedButton.icon(
+                          //       icon: const Icon(Icons.download, color: Colors.white),
+                          //       label: const Text("Download Users"),
+                          //       style: ElevatedButton.styleFrom(backgroundColor: MyColors.color1),
+                          //       onPressed: () => _downloadUsers(companyId, companyName),
+                          //     ),
+                          //     ElevatedButton.icon(
+                          //       icon: const Icon(Icons.upload_file, color: Colors.white),
+                          //       label: const Text("Upload Users"),
+                          //       style: ElevatedButton.styleFrom(backgroundColor: MyColors.color2),
+                          //       onPressed: () => _uploadUsers(companyId, context),
+                          //     ),
+                          //   ],
+                          // ),
+                          // const SizedBox(height: 12),
                           const SizedBox(width: 12),
 
                           /// ✅ ADD USER
@@ -899,6 +904,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   color: Colors.black),
             ),
 
+            TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                hintText: "Search company...",
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value.toLowerCase().trim();
+                });
+              },
+            ),
+
+            const SizedBox(height: 16),
+
             const SizedBox(height: 16),
 
             Expanded(
@@ -908,7 +931,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   if (!snapshot.hasData)
                     return Center(child: CircularProgressIndicator());
 
-                  var companies = snapshot.data!.docs;
+                  var companies = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final name = data["name"]?.toString().toLowerCase() ?? "";
+                    final id = data["companyId"]?.toString().toLowerCase() ?? "";
+
+                    return name.contains(searchQuery) || id.contains(searchQuery);
+                  }).toList();
 
                   return ListView.builder(
                     itemCount: companies.length,
