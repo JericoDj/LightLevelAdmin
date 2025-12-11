@@ -3,9 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:go_router/go_router.dart';
-
-import '../routes/router.dart';
-
+import '../routes/router.dart'; // <-- IMPORTANT for rootNavigatorKey
 
 class AuthTokenGuard extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -31,29 +29,31 @@ class AuthTokenGuard extends GetxController {
 
     _tokenSub = _auth.idTokenChanges().listen((user) async {
       final savedUid = storage.read("uid");
-      print("👀 LISTENER → user = $user, savedUid = $savedUid");
+      print("👀 LISTENER → user=$user, savedUid=$savedUid");
 
       if (user == null) {
         _forceLogout("Token revoked or user deleted");
         return;
       }
 
-      print("✅ Token valid for user ${user.uid}");
+      print("✅ Token valid for: ${user.uid}");
     });
 
-    _tokenRefreshTimer =
-        Timer.periodic(const Duration(seconds: 10), (_) async {
-          final user = _auth.currentUser;
-          if (user == null) return;
+    _tokenRefreshTimer = Timer.periodic(
+      const Duration(seconds: 10),
+          (_) async {
+        final user = _auth.currentUser;
+        if (user == null) return;
 
-          try {
-            await user.getIdToken(true);
-            print("🔄 Token silently refreshed");
-          } catch (e) {
-            print("⚠️ Token refresh failed → $e");
-            _forceLogout("Token refresh failed");
-          }
-        });
+        try {
+          await user.getIdToken(true);
+          print("🔄 Token refreshed silently");
+        } catch (e) {
+          print("⚠️ Token refresh error: $e");
+          _forceLogout("Token refresh failed");
+        }
+      },
+    );
   }
 
   Future<void> _forceLogout(String reason) async {
@@ -62,26 +62,31 @@ class AuthTokenGuard extends GetxController {
 
     print("🚨 FORCE LOGOUT → $reason");
 
-    _tokenRefreshTimer?.cancel();
-    _tokenSub?.cancel();
-
+    _stopAll();
     await storage.erase();
 
-    /// 🔥 CORRECT WAY FOR WEB + GO ROUTER
+    // ❤️ Correct GoRouter navigation
     Future.microtask(() {
       final ctx = rootNavigatorKey.currentContext;
       if (ctx != null) {
         ctx.go('/login');
       } else {
-        print("⚠️ Could not navigate (context null)");
+        print("⚠️ Navigation failed → context was null");
       }
     });
   }
 
+  void _stopAll() {
+    _tokenRefreshTimer?.cancel();
+    _tokenRefreshTimer = null;
+
+    _tokenSub?.cancel();
+    _tokenSub = null;
+  }
+
   @override
   void onClose() {
-    _tokenRefreshTimer?.cancel();
-    _tokenSub?.cancel();
+    _stopAll();
     super.onClose();
   }
 }
