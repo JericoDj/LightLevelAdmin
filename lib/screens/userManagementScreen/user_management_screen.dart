@@ -370,6 +370,46 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                             .doc(user.id)
                                             .delete();
 
+                                        final doc = await FirebaseFirestore.instance
+                                            .collection("companies")
+                                            .doc(companyId)
+                                            .get();
+
+                                        final companyRole = doc.data()?['role'];
+
+                                        QuerySnapshot<Map<String, dynamic>>? adminQuery;
+
+                                        if (companyRole.toLowerCase() != "user") {
+                                          adminQuery = await _firestore
+                                              .collection("admins")
+                                              .where("email", isEqualTo: email)
+                                              .limit(1)
+                                              .get();
+                                        }
+
+                                        print("here is the admin doc");
+                                        print(adminQuery);
+
+                                        if (adminQuery != null && adminQuery.docs.isNotEmpty) {
+                                          final docId = adminQuery.docs.first.id;
+                                          print("Document ID: $docId");
+                                          print("Document ID: $docId");
+
+                                          await _deleteAdmin(
+                                            context,
+                                            docId,
+                                          );
+                                        } else {
+                                          print("No admin document found");
+
+
+                                        }
+
+
+
+
+
+
                                         // ✅ Delete from global users
                                         final userQuery = await _firestore
                                             .collection("users")
@@ -416,6 +456,68 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         );
       },
     );
+  }
+
+  Future<void> _deleteAdmin(BuildContext context, String uid) async {
+    try {
+
+      print("running deletion of admin");
+      final String currentUserUid = UserStorage.getUser()?['uid'] ?? '';
+
+      if (uid == currentUserUid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("You can't delete your own admin account."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      const String functionUrl = "https://deleteuseraccount-zesi6puwbq-uc.a.run.app";
+      final dio.Dio httpClient = dio.Dio();
+
+      debugPrint("📡 Calling delete function: $functionUrl");
+      debugPrint("🧾 Sending UID: $uid");
+
+      final response = await httpClient.post(
+        functionUrl,
+        data: {"uid": uid},
+        options: dio.Options(
+          headers: {
+            "Content-Type": "application/json",
+          },
+        ),
+      );
+
+      debugPrint("📡 Response: ${response.statusCode} - ${response.data}");
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        await FirebaseFirestore.instance.collection("admins").doc(uid).delete();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("User deleted successfully."),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to delete user: ${response.data}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("🔥 Deletion Exception: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Unexpected error: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
 

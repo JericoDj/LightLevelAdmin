@@ -38,11 +38,13 @@ import '../screens/ticketsScreen/tickets_screen.dart';
 import '../screens/userManagementScreen/user_management_screen.dart';
 import '../navigationBarMenu.dart';
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter router = GoRouter(
 
 
   initialLocation: '/login',
+  navigatorKey: rootNavigatorKey,
   redirect: (context, state) {
     final user = GetStorage().read('user');
     final isLoggedIn = user != null && user['uid'] != null;

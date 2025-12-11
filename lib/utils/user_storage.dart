@@ -15,6 +15,11 @@ class UserStorage {
     return _storage.read('user');
   }
 
+  static String? getUid() {
+    final user = _storage.read('user');
+    return user?['uid'];
+  }
+
   static void clearUser() {
     _storage.remove('user');
     _storage.remove('user_role'); // Also clear the saved role
