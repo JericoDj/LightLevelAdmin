@@ -176,9 +176,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-
-  void _deleteCompany(String companyId) async {
+  Future<void> _deleteCompany(String companyId) async {
     await _firestore.collection("companies").doc(companyId).delete();
+  }
+
+  Future<bool> _companyHasUsers(String companyId) async {
+    final snapshot = await _firestore
+        .collection("companies")
+        .doc(companyId)
+        .collection("users")
+        .limit(1) // Only check 1 → avoids heavy reads
+        .get();
+
+    return snapshot.docs.isNotEmpty;
   }
 
   void _showUsersDialog(String companyId, String companyName, String role) {
@@ -966,8 +976,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               ),
                               IconButton(
                                 icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () =>
-                                    _deleteCompany(company["companyId"]),
+                                onPressed: () => _confirmDeleteCompany(context, company["companyId"]),
                               ),
                             ],
                           ),
@@ -991,4 +1000,93 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       ),
     );
   }
+  Future<void> _confirmDeleteCompany(BuildContext context, String companyId) async {
+    // 🔍 Check if users exist FIRST
+    final hasUsers = await _companyHasUsers(companyId);
+
+    if (hasUsers) {
+      // ❌ Company has users → show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Cannot delete this company because it still has users."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return; // ⛔ Stop here, do not show delete dialog
+    }
+
+    // ✔️ No users → show delete confirmation dialog
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Delete Company"),
+        content: const Text("Are you sure you want to delete this company?"),
+        actions: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // CANCEL BUTTON
+              GestureDetector(
+                onTap: () => Navigator.of(dialogContext).pop(false),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black87, width: 1.2),
+                    borderRadius: BorderRadius.circular(8),
+
+                  ),
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // DELETE BUTTON
+              GestureDetector(
+                onTap: () => Navigator.of(dialogContext).pop(true),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    "Delete",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteCompany(companyId);
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Company deleted successfully"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
 }
+
