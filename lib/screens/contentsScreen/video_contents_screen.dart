@@ -204,7 +204,11 @@ class _VideosContentScreenState extends State<VideosContentScreen> {
       appBar: AppBar(
         title: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: const Text('Manage Videos')),
+            child: Text(
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width * 0.012,
+                ),
+                'Manage Videos')),
         backgroundColor: MyColors.color1  ,
         foregroundColor: MyColors.white,
       ),
@@ -234,23 +238,26 @@ class _VideosContentScreenState extends State<VideosContentScreen> {
   }
 
   Widget _buildVideoCard(Map<String, dynamic> video, int index) {
-    return Card(
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildThumbnail(video, index),
-            const SizedBox(height: 12),
-            _buildTitleField(video),
-            const SizedBox(height: 8),
-            _buildDescriptionField(video),
-            const SizedBox(height: 8),
-            _buildUrlField(video),
-            const SizedBox(height: 12),
-            _buildActionButtons(index),
-          ],
+    return Container(
+      height: MediaQuery.of(context).size.width * 0.5,
+      child: Card(
+        elevation: 3,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildThumbnail(video, index),
+              const SizedBox(height: 12),
+              _buildTitleField(video),
+              const SizedBox(height: 8),
+              _buildDescriptionField(video),
+              const SizedBox(height: 8),
+              _buildUrlField(video),
+              const SizedBox(height: 12),
+              _buildActionButtons(index),
+            ],
+          ),
         ),
       ),
     );
@@ -262,7 +269,7 @@ class _VideosContentScreenState extends State<VideosContentScreen> {
       child: Stack(
         children: [
           Container(
-            height: 180,
+            height:  MediaQuery.of(context).size.width * 0.12  ,
             width: double.infinity,
             decoration: BoxDecoration(
               color: Colors.grey[200],
@@ -271,7 +278,9 @@ class _VideosContentScreenState extends State<VideosContentScreen> {
             child: (video['thumbnail']?.toString().isNotEmpty ?? false)
                 ? ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(video['thumbnail'], fit: BoxFit.cover),
+              child: Image.network(
+                  height:  MediaQuery.of(context).size.width * 0.04  ,
+                  video['thumbnail'], fit: BoxFit.cover),
             )
                 : const Center(child: Text("Tap to upload thumbnail", style: TextStyle(color: Colors.grey))),
           ),
@@ -279,7 +288,7 @@ class _VideosContentScreenState extends State<VideosContentScreen> {
             bottom: 8,
             right: 8,
             child: IconButton(
-              icon: Icon(Icons.upload, color: Colors.white),
+              icon: Icon(Icons.upload, color: Colors.black87),
               onPressed: () => _pickThumbnail(index),
             ),
           ),
@@ -292,63 +301,75 @@ class _VideosContentScreenState extends State<VideosContentScreen> {
 
 
   Widget _buildTitleField(Map<String, dynamic> video) {
-    return TextField(
-      controller: video['controller'],
-      decoration: const InputDecoration(
-        labelText: 'Title',
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return Container(
+      height: MediaQuery.of(context).size.width * 0.025,
+      child: TextField(
+        controller: video['controller'],
+        decoration: const InputDecoration(
+          labelText: 'Title',
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        onChanged: (_) => _updateFirestoreVideos(),
       ),
-      onChanged: (_) => _updateFirestoreVideos(),
     );
   }
 
   Widget _buildDescriptionField(Map<String, dynamic> video) {
-    return TextField(
-      controller: video['descriptionController'],
-      decoration: const InputDecoration(
-        labelText: 'Description',
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return Container(
+      height: MediaQuery.of(context).size.width * 0.025,
+      child: TextField(
+        controller: video['descriptionController'],
+        decoration: const InputDecoration(
+          labelText: 'Description',
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        onChanged: (_) => _updateFirestoreVideos(),
       ),
-      onChanged: (_) => _updateFirestoreVideos(),
     );
   }
 
   Widget _buildUrlField(Map<String, dynamic> video) {
-    return TextField(
-      controller: video['urlController'],
-      decoration: const InputDecoration(
-        labelText: 'Video URL',
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return Container(
+      height: MediaQuery.of(context).size.width * 0.025,
+      child: TextField(
+        controller: video['urlController'],
+        decoration: const InputDecoration(
+          labelText: 'Video URL',
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        onChanged: (_) => _updateFirestoreVideos(),
       ),
-      onChanged: (_) => _updateFirestoreVideos(),
     );
   }
 
   Widget _buildActionButtons(int index) {
-    return Row(
-      children: [
-        ElevatedButton.icon(
-          icon: const Icon(Icons.upload_file, size: 20, color: MyColors.white),
-          label: const Text("Upload Video"),
-          onPressed: () => _pickVideoAndReplace(index),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: MyColors.color2,
-            foregroundColor: MyColors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+    return Container(
+      height: MediaQuery.of(context).size.width * 0.020,
+      child: Row(
+        children: [
+          ElevatedButton.icon(
+            icon: const Icon(Icons.upload_file, size: 20, color: MyColors.white),
+            label: const Text("Upload Video"),
+            onPressed: () => _pickVideoAndReplace(index),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MyColors.color2,
+              foregroundColor: MyColors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
-        ),
-        const Spacer(),
-        IconButton(
-          icon: const Icon(Icons.delete, color: Colors.red),
-          onPressed: () => _deleteVideo(index),
-        ),
-      ],
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: () => _deleteVideo(index),
+          ),
+        ],
+      ),
     );
   }
 }

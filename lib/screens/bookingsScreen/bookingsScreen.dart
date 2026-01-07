@@ -564,7 +564,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(50),
         child: AppBar(
-          title: const Align(
+          title:  Align(
             alignment: AlignmentDirectional.centerStart,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -572,7 +572,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 'Booking Management',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 24,
+                  fontSize: MediaQuery.of(context).size.width * 0.012,
                 ),
               ),
             ),

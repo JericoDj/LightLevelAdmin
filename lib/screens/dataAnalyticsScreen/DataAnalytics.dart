@@ -260,11 +260,11 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
             alignment: AlignmentDirectional.centerStart,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: const Text(
+              child:  Text(
                 'Data Analytics',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 24  ,
+                  fontSize: MediaQuery.of(context).size.width * 0.012,
                 ),
               ),
             ),

@@ -85,7 +85,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
   // Your UI Components (UNCHANGED)
   // -----------------------------------------------------------
 
-  void _showStatusDialog(BuildContext context, String userId, String sessionType) {
+  void _showStatusDialog(
+      BuildContext context, String userId, String sessionType) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -95,28 +96,31 @@ class _SessionsScreenState extends State<SessionsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: ["Queue", "Ongoing", "Finished", "Cancelled"]
                 .map((status) => ListTile(
-              title: Text(status),
-              onTap: () {
-                controller.updateStatus(
-                  context,
-                  userId,
-                  sessionType,
-                  status.toLowerCase(),
-                );
-                Navigator.pop(dialogContext);
-              },
-            ))
+                      title: Text(status),
+                      onTap: () {
+                        controller.updateStatus(
+                          context,
+                          userId,
+                          sessionType,
+                          status.toLowerCase(),
+                        );
+                        Navigator.pop(dialogContext);
+                      },
+                    ))
                 .toList(),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cancel")),
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text("Cancel")),
           ],
         );
       },
     );
   }
 
-  Widget _buildConsultationSection(String title, String status, String sessionType, Color headerColor) {
+  Widget _buildConsultationSection(
+      String title, String status, String sessionType, Color headerColor) {
     return Expanded(
       child: SizedBox(
         height: 320,
@@ -131,15 +135,20 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 color: headerColor,
                 child: Text(
                   "$title ($sessionType)",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                   textAlign: TextAlign.center,
                 ),
               ),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: controller.getConsultationsStream(status, sessionType),
+                  stream:
+                      controller.getConsultationsStream(status, sessionType),
                   builder: (context, snapshot) {
-                    if (snapshot.hasError) return const Center(child: Text("Error loading data"));
+                    if (snapshot.hasError)
+                      return const Center(child: Text("Error loading data"));
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return const Center(child: Text("No consultations"));
                     }
@@ -147,7 +156,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
                     return ListView.builder(
                       itemCount: snapshot.data!.docs.length,
                       itemBuilder: (context, index) {
-                        var data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                        var data = snapshot.data!.docs[index].data()
+                            as Map<String, dynamic>;
                         return _buildSessionCard(context, status, data);
                       },
                     );
@@ -161,7 +171,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
     );
   }
 
-  Widget _buildSessionCard(BuildContext context, String status, Map<String, dynamic> data) {
+  Widget _buildSessionCard(
+      BuildContext context, String status, Map<String, dynamic> data) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       padding: const EdgeInsets.all(12),
@@ -210,15 +221,16 @@ class _SessionsScreenState extends State<SessionsScreen> {
     );
   }
 
-  List<Widget> _buildActionButtons(
-      BuildContext context, String status, String userId, String sessionType, String fullName, String companyId) {
+  List<Widget> _buildActionButtons(BuildContext context, String status,
+      String userId, String sessionType, String fullName, String companyId) {
     if (status == "queue") {
       return [
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
           child: const Text("Admit", style: TextStyle(color: Colors.white)),
           onPressed: () async {
-            await controller.admitUser(context, userId, sessionType, fullName, companyId);
+            await controller.admitUser(
+                context, userId, sessionType, fullName, companyId);
             controller.openSession(userId, sessionType, fullName, companyId);
           },
         ),
@@ -230,7 +242,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
           onPressed: () => _showStatusDialog(context, userId, sessionType),
-          child: const Text("Change Status", style: TextStyle(color: Colors.white)),
+          child: const Text("Change Status",
+              style: TextStyle(color: Colors.white)),
         ),
       ];
     }
@@ -241,30 +254,51 @@ class _SessionsScreenState extends State<SessionsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Session Management", style: TextStyle(fontSize: 22)),
+        title: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+            child: Text("Session Management",
+                textAlign: TextAlign.start,
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width * 0.012,
+                  color: Colors.white,
+                )),
+          ),
+        ),
         backgroundColor: Colors.green[800],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 12),
-            const Text("Chat Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text("Chat Sessions",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             Row(
               children: [
-                _buildConsultationSection("Queue", "queue", "Chat", Colors.blueAccent),
-                _buildConsultationSection("Ongoing", "ongoing", "Chat", Colors.green),
-                _buildConsultationSection("Finished", "finished", "Chat", Colors.orange),
-                _buildConsultationSection("Cancelled", "cancelled", "Chat", Colors.red),
+                _buildConsultationSection(
+                    "Queue", "queue", "Chat", Colors.blueAccent),
+                _buildConsultationSection(
+                    "Ongoing", "ongoing", "Chat", Colors.green),
+                _buildConsultationSection(
+                    "Finished", "finished", "Chat", Colors.orange),
+                _buildConsultationSection(
+                    "Cancelled", "cancelled", "Chat", Colors.red),
               ],
             ),
             const SizedBox(height: 20),
-            const Text("Talk Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text("Talk Sessions",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             Row(
               children: [
-                _buildConsultationSection("Queue", "queue", "Talk", Colors.blueAccent),
-                _buildConsultationSection("Ongoing", "ongoing", "Talk", Colors.green),
-                _buildConsultationSection("Finished", "finished", "Talk", Colors.orange),
-                _buildConsultationSection("Cancelled", "cancelled", "Talk", Colors.red),
+                _buildConsultationSection(
+                    "Queue", "queue", "Talk", Colors.blueAccent),
+                _buildConsultationSection(
+                    "Ongoing", "ongoing", "Talk", Colors.green),
+                _buildConsultationSection(
+                    "Finished", "finished", "Talk", Colors.orange),
+                _buildConsultationSection(
+                    "Cancelled", "cancelled", "Talk", Colors.red),
               ],
             ),
           ],

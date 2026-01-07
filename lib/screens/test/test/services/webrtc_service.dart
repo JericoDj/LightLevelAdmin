@@ -6,7 +6,8 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../utils/utils.dart';
 
 Map<String, dynamic> configuration = {
-  "iceServers": Utils.getIceServers(),
+  "iceServers": Utils.
+  getIceServers(),
 };
 
 Map<String, dynamic> offerSdpConstraints = {

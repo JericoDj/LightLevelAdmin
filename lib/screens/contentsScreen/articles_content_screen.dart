@@ -149,13 +149,13 @@ class _ArticlesContentScreenState extends State<ArticlesContentScreen> {
           elevation: 0,
           title: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Text(
-                'Mindhub Contents',
+                'Mindhub Article Contents',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 24,
+                  fontSize: MediaQuery.of(context).size.width * 0.012,
                 ),
               ),
             ),

@@ -181,7 +181,11 @@ class _EbooksContentScreenState extends State<EbooksContentScreen> {
       appBar: AppBar(
         title: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: const Text('Manage eBooks')),
+            child:  Text(
+              style: TextStyle(
+                fontSize: MediaQuery.of(context).size.width * 0.012,
+              ),
+                'Manage eBooks')),
         backgroundColor: MyColors.color1,
         foregroundColor: MyColors.white,
       ),

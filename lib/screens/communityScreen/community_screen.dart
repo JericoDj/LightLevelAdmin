@@ -32,11 +32,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
             alignment: AlignmentDirectional.centerStart,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: const Text(
+              child:     Text(
                 'Community Management',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 24  ,
+                  fontSize: MediaQuery.of(context).size.width * 0.012,
                 ),
               ),
             ),

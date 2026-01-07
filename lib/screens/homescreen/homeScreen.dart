@@ -41,9 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchSupportTicketCount() async {
     try {
-      final ticketQuery = await FirebaseFirestore.instance
-          .collectionGroup('tickets')
-          .get();
+      final ticketQuery =
+          await FirebaseFirestore.instance.collectionGroup('tickets').get();
 
       setState(() {
         _supportTicketCount = ticketQuery.docs.length;
@@ -103,11 +102,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: AppBar(
           title: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Text(
                 'Admin Dashboard',
-                style: TextStyle(color: Colors.white, fontSize: 24),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: MediaQuery.of(context).size.width * 0.012,
+                ),
               ),
             ),
           ),
@@ -128,10 +130,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   // _buildDashboardCard("📊 Average Mood", "Neutral (3.5/5)", Colors.blueAccent),
                   // _buildDashboardCard("⚡ Average Stress Level", "Moderate (2.8/5)", Colors.orangeAccent),
-                  _buildDashboardCard("📅 Safe Space Queue Sessions", "$_safeSpaceQueueCount Sessions", MyColors.color2),
-                  _buildDashboardCard("🕒 24/7 Safe Space Queue", "$_safeSpace247QueueCount Users", MyColors.color2),
-                  _buildDashboardCard("📞 Customer Support Queue", "$_supportTicketCount Tickets", MyColors.color2),
-                  _buildDashboardCard("🌍 Community Queue Posts", "$_communityPendingPostsCount Posts", MyColors.color2),
+                  _buildDashboardCard("📅 Safe Space Queue Sessions",
+                      "$_safeSpaceQueueCount Sessions", MyColors.color2),
+                  _buildDashboardCard("🕒 24/7 Safe Space Queue",
+                      "$_safeSpace247QueueCount Users", MyColors.color2),
+                  _buildDashboardCard("📞 Customer Support Queue",
+                      "$_supportTicketCount Tickets", MyColors.color2),
+                  _buildDashboardCard("🌍 Community Queue Posts",
+                      "$_communityPendingPostsCount Posts", MyColors.color2),
                 ],
               ),
             ),
@@ -158,11 +164,16 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87)),
           const SizedBox(height: 10),
           Text(
             value,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),
