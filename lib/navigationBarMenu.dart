@@ -372,13 +372,13 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         children: const [
           Divider(),
           Text(
-            'App Version: 2.0.12',
+            'App Version: 2.0.13',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
           SizedBox(height: 4),
 
           Text(
-            'Build Number: 12',
+            'Build Number: 13',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],
