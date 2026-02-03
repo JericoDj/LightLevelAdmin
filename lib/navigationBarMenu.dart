@@ -11,7 +11,8 @@ class NavigationBarMenuScreen extends StatefulWidget {
   const NavigationBarMenuScreen({super.key, required this.child});
 
   @override
-  _NavigationBarMenuScreenState createState() => _NavigationBarMenuScreenState();
+  _NavigationBarMenuScreenState createState() =>
+      _NavigationBarMenuScreenState();
 }
 
 class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
@@ -68,7 +69,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
     // Optional fallback
     if (mounted) {
-      setState(() => isLoading = false);
+      // ✅ Fallback to Firestore if local storage fails
+      await _fetchUserRole();
     }
   }
 
@@ -89,7 +91,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
           // ✅ Auto-redirect Specialist to 'Test' page
           if (isSpecialist) {
-            Future.delayed(Duration.zero, () => context.go('/navigation/bookings'));
+            Future.delayed(
+                Duration.zero, () => context.go('/navigation/bookings'));
           }
         });
       } else {
@@ -124,7 +127,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           '/navigation/logout',
         ];
 
-        int currentIndex = routes.indexOf(router.routeInformationProvider.value.uri.toString());
+        int currentIndex = routes
+            .indexOf(router.routeInformationProvider.value.uri.toString());
 
         if (currentIndex > 0) {
           router.go(routes[currentIndex - 1]);
@@ -135,7 +139,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       child: Scaffold(
         backgroundColor: MyColors.white,
         appBar: AppBar(
-          title: const Text('Luminara Admin Panel', style: TextStyle(color: MyColors.color1, fontWeight: FontWeight.bold)),
+          title: const Text('Luminara Admin Panel',
+              style: TextStyle(
+                  color: MyColors.color1, fontWeight: FontWeight.bold)),
           backgroundColor: MyColors.greyLight,
           elevation: 3,
         ),
@@ -186,19 +192,20 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
             Expanded(
               flex: 8,
               child: isLoading
-                  ? const Center(child: CircularProgressIndicator()) // ⏳ Show loading
+                  ? const Center(
+                      child: CircularProgressIndicator()) // ⏳ Show loading
                   : (userRole == null)
-                  ? _noUserFoundWidget() // ❌ Handle no user case
-                  : _canAccessRoute(
-                userRole!,
-                GoRouter.of(context)
-                    .routeInformationProvider
-                    .value
-                    .uri
-                    .toString(),
-              )
-                  ? widget.child
-                  : _restrictedAccessWidget(),
+                      ? _noUserFoundWidget() // ❌ Handle no user case
+                      : _canAccessRoute(
+                          userRole!,
+                          GoRouter.of(context)
+                              .routeInformationProvider
+                              .value
+                              .uri
+                              .toString(),
+                        )
+                          ? widget.child
+                          : _restrictedAccessWidget(),
             ),
           ],
         ),
@@ -234,16 +241,15 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     return false;
   }
 
-
   Widget _noUserFoundWidget() {
     return const Center(
       child: Text(
         'No user found. Please log in again.',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.red),
+        style: TextStyle(
+            fontSize: 16, fontWeight: FontWeight.w500, color: Colors.red),
       ),
     );
   }
-
 
   /// Dynamic Sidebar Items Based on Role
   List<Widget> _buildSidebarItems(BuildContext context) {
@@ -251,16 +257,24 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       case 'Super Admin':
         return [
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
-          _buildSidebarItem(context, Icons.people, 'User Management', '/navigation/user-management'),
-          _buildSidebarItem(context, Icons.article, 'Contents', '/navigation/contents'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
+          _buildSidebarItem(context, Icons.people, 'User Management',
+              '/navigation/user-management'),
+          _buildSidebarItem(
+              context, Icons.article, 'Contents', '/navigation/contents'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions',
+              '/navigation/sessions'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
+              '/navigation/bookings'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Support',
+              '/navigation/support'),
 
-          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
-          _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics', '/navigation/dataanalytics'),
+          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets',
+              '/navigation/tickets'),
+          _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics',
+              '/navigation/dataanalytics'),
 
-          _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
+          _buildSidebarItem(
+              context, Icons.groups, 'Community', '/navigation/community'),
           // _buildSidebarItem(context, Icons.report, 'Reports', '/navigation/reports'),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
@@ -268,27 +282,32 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       case 'Admin':
         return [
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions', '/navigation/sessions'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions',
+              '/navigation/sessions'),
           // _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
-          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets', '/navigation/tickets'),
-          _buildSidebarItem(context, Icons.groups, 'Community', '/navigation/community'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
+              '/navigation/bookings'),
+          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets',
+              '/navigation/tickets'),
+          _buildSidebarItem(
+              context, Icons.groups, 'Community', '/navigation/community'),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
       case 'Specialist':
         return [
-
-          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings', '/navigation/bookings'),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
+              '/navigation/bookings'),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
-
         ];
       case 'Corporate':
         return [
-          _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics', '/navigation/dataanalytics'),
+          _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics',
+              '/navigation/dataanalytics'),
           _buildLogoutItem(context),
-        ];;
+        ];
+        ;
       default: // For 'User'
         return [
           _buildLogoutItem(context),
@@ -308,8 +327,10 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
   }
 
   /// Sidebar Item
-  Widget _buildSidebarItem(BuildContext context, IconData icon, String title, String route) {
-    final currentRoute = GoRouter.of(context).routeInformationProvider.value.uri.toString();
+  Widget _buildSidebarItem(
+      BuildContext context, IconData icon, String title, String route) {
+    final currentRoute =
+        GoRouter.of(context).routeInformationProvider.value.uri.toString();
     final bool isSelected = currentRoute == route;
 
     return GestureDetector(
@@ -343,9 +364,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       onTap: () async {
         await FirebaseAuth.instance.signOut();
         final storage = GetStorage();
-        await storage.erase(); // 🔥 Clears all stored keys like 'user' and 'user_role'
+        await storage
+            .erase(); // 🔥 Clears all stored keys like 'user' and 'user_role'
         context.go('/login');
-
       },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
@@ -356,13 +377,11 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
             Icon(Icons.logout, color: Colors.red),
             SizedBox(width: 10),
             Text('Logout', style: TextStyle(fontSize: 16, color: Colors.red)),
-
           ],
         ),
       ),
     );
   }
-
 
   _buildVersionInfoWidget() {
     return Padding(
@@ -372,13 +391,12 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         children: const [
           Divider(),
           Text(
-            'App Version: 2.0.13',
+            'App Version: 2.0.14',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
           SizedBox(height: 4),
-
           Text(
-            'Build Number: 13',
+            'Build Number: 14',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],

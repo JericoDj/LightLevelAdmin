@@ -243,8 +243,35 @@ class _BookingsScreenState extends State<BookingsScreen> {
       selectedSpecialist = 'Not Assigned';
     }
 
-    DateTime selectedDate =
-        DateTime.tryParse(booking['date_requested'] ?? '') ?? DateTime.now();
+    DateTime selectedDate;
+    final dr = booking['date_requested'] ?? '';
+
+    try {
+
+      String _monthToNum(String month) {
+        const m = {
+          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12',
+        };
+        return m[month] ?? '01';
+      }
+      // Format: Fri, Jan 30
+      if (dr.contains(',')) {
+        final parts = dr.split(',');
+        final monthDay = parts[1].trim(); // Jan 30
+        selectedDate = DateTime.parse(
+            "${DateTime.now().year}-${_monthToNum(monthDay.split(' ')[0])}-${monthDay.split(' ')[1].padLeft(2, '0')}"
+        );
+      }
+      // ISO case: 2025-09-20
+      else {
+        selectedDate = DateTime.parse(dr);
+      }
+    } catch (_) {
+      selectedDate = DateTime.now();
+    }
+
 
     showDialog(
       context: context,

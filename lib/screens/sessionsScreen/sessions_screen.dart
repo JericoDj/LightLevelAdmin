@@ -3,6 +3,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 import '../../controllers/session_controller.dart';
 
 class SessionsScreen extends StatefulWidget {
@@ -15,8 +16,6 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   late AudioPlayer _player;
 
-  int _lastChatQueueCount = 0;
-  int _lastTalkQueueCount = 0;
 
   @override
   void initState() {
@@ -28,6 +27,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   @override
   void dispose() {
+    _player.stop();
     _player.dispose();
     super.dispose();
   }
@@ -37,20 +37,13 @@ class _SessionsScreenState extends State<SessionsScreen> {
   /// --------------------------
   Future<void> _playAlertSound() async {
     try {
-      if (kIsWeb) {
-        // Web must use URLSource
-        await _player.play(
-          UrlSource("assets/notify.mp3"),
-          volume: 1.0,
-        );
-      } else {
-        await _player.play(
-          AssetSource("notify.mp3"), // asset path is auto-resolved
-          volume: 1.0,
-        );
-      }
+      await _player.stop(); // prevent overlap
+      await _player.play(
+        AssetSource('notify.mp3'),
+        volume: 1.0,
+      );
     } catch (e) {
-      print("Sound error → $e");
+      debugPrint("Sound error → $e");
     }
   }
 
@@ -60,26 +53,29 @@ class _SessionsScreenState extends State<SessionsScreen> {
   void _listenForQueueAlerts() {
     // CHAT QUEUE
     controller.getConsultationsStream("queue", "Chat").listen((snapshot) {
-      final count = snapshot.docs.length;
+      if (!_isOnSessionsRoute) return; // 🔒 guard
 
-      if (count > _lastChatQueueCount) {
-        _playAlertSound();
+      for (final change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.added) {
+          _playAlertSound();
+          break;
+        }
       }
-
-      _lastChatQueueCount = count;
     });
 
     // TALK QUEUE
     controller.getConsultationsStream("queue", "Talk").listen((snapshot) {
-      final count = snapshot.docs.length;
+      if (!_isOnSessionsRoute) return; // 🔒 guard
 
-      if (count > _lastTalkQueueCount) {
-        _playAlertSound();
+      for (final change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.added) {
+          _playAlertSound();
+          break;
+        }
       }
-
-      _lastTalkQueueCount = count;
     });
   }
+
 
   // -----------------------------------------------------------
   // Your UI Components (UNCHANGED)
@@ -221,6 +217,14 @@ class _SessionsScreenState extends State<SessionsScreen> {
     );
   }
 
+  bool get _isOnSessionsRoute {
+    final router = GoRouter.of(context);
+    final currentRoute =
+    router.routeInformationProvider.value.uri.toString();
+
+    return currentRoute.startsWith('/navigation/sessions');
+  }
+
   List<Widget> _buildActionButtons(BuildContext context, String status,
       String userId, String sessionType, String fullName, String companyId) {
     if (status == "queue") {
@@ -306,4 +310,9 @@ class _SessionsScreenState extends State<SessionsScreen> {
       ),
     );
   }
+
+
+
 }
+
+

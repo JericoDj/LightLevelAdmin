@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../utils/user_storage.dart';
 
-
 class AuthRepository extends GetxController {
   static AuthRepository get instance => Get.find();
 
@@ -26,19 +25,16 @@ class AuthRepository extends GetxController {
       User? user = userCredential.user;
 
       if (user != null) {
-        DocumentSnapshot adminDoc = await _firestore.collection("admins").doc(user.uid).get();
+        DocumentSnapshot adminDoc =
+            await _firestore.collection("admins").doc(user.uid).get();
 
         if (adminDoc.exists) {
           final data = adminDoc.data() as Map<String, dynamic>?;
-          print (data);
+          print(data);
           final role = data?['role'] ?? 'User';
           final fullName = data?["fullName"] ?? '';
           // ✅ Save user and role to local storage
-          UserStorage.saveUser(
-            uid: user.uid,
-            email: email,
-            fullName: fullName
-          );
+          UserStorage.saveUser(uid: user.uid, email: email, fullName: fullName);
           UserStorage.saveUserRole(role);
 
           // ✅ Route based on role
@@ -48,7 +44,6 @@ class AuthRepository extends GetxController {
             context.go('/navigation/dataanalytics');
           } else if (role == 'Super Admin' || role == 'Admin') {
             context.go('/navigation/home');
-
           } else {
             await _auth.signOut();
             UserStorage.clearUser();
@@ -56,15 +51,10 @@ class AuthRepository extends GetxController {
           }
         } else {
           await _auth.signOut();
-
         }
       }
-    } on FirebaseAuthException catch (e) {
-
-    }
+    } on FirebaseAuthException catch (e) {}
   }
-
-
 
   Future<UserCredential?> registerAdmin({
     required String email,
@@ -73,15 +63,19 @@ class AuthRepository extends GetxController {
     required BuildContext context,
   }) async {
     try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
+      const role = 'Admin';
+
       await _firestore.collection("admins").doc(userCredential.user!.uid).set({
         "uid": userCredential.user!.uid,
-        "full_name": fullName,
+        "fullName": fullName,
         "email": email,
+        "role": role,
         "created_at": FieldValue.serverTimestamp(),
       });
 
@@ -89,11 +83,21 @@ class AuthRepository extends GetxController {
         uid: userCredential.user!.uid,
         email: email,
         fullName: fullName,
-
       );
+      UserStorage.saveUserRole(role);
       print(fullName);
 
-      context.go('/navigation/home');
+      if (role == 'Specialist') {
+        context.go('/navigation/bookings');
+      } else if (role == 'Corporate') {
+        context.go('/navigation/dataanalytics');
+      } else if (role == 'Super Admin' || role == 'Admin') {
+        context.go('/navigation/home');
+      } else {
+        await _auth.signOut();
+        UserStorage.clearUser();
+        UserStorage.clearUserRole();
+      }
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
