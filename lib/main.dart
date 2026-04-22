@@ -6,6 +6,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/test/test/services/webrtc_service.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/test/test/utils/firebase_options.dart';
+import 'package:lightlevelpsychosolutionsadmin/providers/articles_provider.dart';
 
 import 'myApp.dart';
 
@@ -26,7 +27,9 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => WebRtcService()), // Only WebRTC stays in provider
+        ChangeNotifierProvider(
+            create: (_) => WebRtcService()), // Only WebRTC stays in provider
+        ChangeNotifierProvider(create: (_) => ArticlesProvider()),
       ],
       child: MyApp(),
     ),
