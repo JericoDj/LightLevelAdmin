@@ -70,25 +70,34 @@ class _CallPageState extends State<CallPage> {
       await remoteVideo.initialize();
 
       peerConnection?.onTrack = (RTCTrackEvent event) {
-        if (event.streams.isEmpty) return;
+        if (event.streams.isEmpty) {
+          debugPrint("⚠️ ADMIN: Track received without streams. Creating temporary stream...");
+          createLocalMediaStream('remote_stream_admin').then((stream) {
+            stream.addTrack(event.track);
+            setState(() {
+              remoteVideo.srcObject = stream;
+            });
+            if (event.track.kind == 'audio') {
+              event.track.enabled = true;
+            }
+          });
+          return;
+        }
 
         final MediaStream stream = event.streams.first;
 
         // ✅ ENABLE REMOTE AUDIO (REQUIRED FOR WEB)
         for (final audioTrack in stream.getAudioTracks()) {
+          debugPrint("🔊 ADMIN: Enabling remote audio track: ${audioTrack.id}");
           audioTrack.enabled = true;
         }
-        debugPrint(
-          '🎧 Remote tracks — '
-              'audio: ${stream.getAudioTracks().length}, '
-              'video: ${stream.getVideoTracks().length}',
-        );
 
         // ✅ SET STREAM ONCE (AUDIO + VIDEO)
         setState(() {
           remoteVideo.srcObject = stream;
         });
       };
+
 
 
       // ✅ CLIENT CREATES ROOM
@@ -124,19 +133,37 @@ class _CallPageState extends State<CallPage> {
     peerConnection = await fbCallService.createPeer();
 
     final mediaConstraints = {
-      'audio': isAudioOn,
+      'audio': {
+        'echoCancellation': true,
+        'noiseSuppression': true,
+        'autoGainControl': true,
+      },
       'video': isVideoOn,
     };
 
+
     localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
-    for (var track in localStream!.getTracks()) {
-      await peerConnection!.addTrack(track, localStream!);
+    if (localStream != null) {
+      debugPrint("🎙️ ADMIN: Local stream captured. Audio tracks: ${localStream!.getAudioTracks().length}");
+      for (var track in localStream!.getTracks()) {
+        debugPrint("📤 ADMIN: Adding track to peerConnection: ${track.kind}");
+        await peerConnection!.addTrack(track, localStream!);
+        
+        // ✅ FORCE ENABLE AUDIO
+        if (track.kind == 'audio') {
+          track.enabled = true;
+          debugPrint("🔊 ADMIN: Local audio track explicitly enabled");
+        }
+      }
+    } else {
+      debugPrint("❌ ADMIN: Failed to capture local stream");
     }
 
     localVideo.srcObject = localStream;
     setState(() {});
   }
+
 
   // ------------------------------------------------------------
   // FIRESTORE SAVE (CLIENT CREATES ROOM)

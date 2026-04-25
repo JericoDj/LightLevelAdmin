@@ -8,25 +8,49 @@ typedef void StreamStateCallback(MediaStream stream);
 class Signaling {
   Map<String, dynamic> configuration = {
     'iceServers': [
-      // ✅ STUN (fast path – works on Wi-Fi)
+      // STUN
       {
-        'urls': [
-          'stun:stun1.l.google.com:19302',
-          'stun:stun2.l.google.com:19302',
-        ],
+        'urls': 'stun:stun.relay.metered.ca:80',
       },
 
-      // ✅ TURN (required for mobile data / strict NAT)
+      // TURN UDP
       {
-        'urls': [
-          'turn:relay1.expressturn.com:3480?transport=udp',
-          'turn:relay1.expressturn.com:3480?transport=tcp',
-        ],
-        'username': 'efCZROI01OLPMN8I36',
-        'credential': 'UZJ6nsqQoCXfVm6S',
+        'urls': 'turn:global.relay.metered.ca:80',
+        'username': '273fe7dbf04b56d09d97c590',
+        'credential': 'Eb5gC0BrTVvnaiYm',
+      },
+
+      // TURN TCP
+      {
+        'urls': 'turn:global.relay.metered.ca:80?transport=tcp',
+        'username': '273fe7dbf04b56d09d97c590',
+        'credential': 'Eb5gC0BrTVvnaiYm',
+      },
+
+      // TURN UDP 443
+      {
+        'urls': 'turn:global.relay.metered.ca:443',
+        'username': '273fe7dbf04b56d09d97c590',
+        'credential': 'Eb5gC0BrTVvnaiYm',
+      },
+
+      // TURN TLS (BEST for strict networks)
+      {
+        'urls': 'turns:global.relay.metered.ca:443?transport=tcp',
+        'username': '273fe7dbf04b56d09d97c590',
+        'credential': 'Eb5gC0BrTVvnaiYm',
       },
     ],
   };
+
+  final Map<String, dynamic> sdpConstraints = {
+    'mandatory': {
+      'OfferToReceiveAudio': true,
+      'OfferToReceiveVideo': true,
+    },
+    'optional': [],
+  };
+
 
 
   RTCPeerConnection? peerConnection;
@@ -56,13 +80,16 @@ class Signaling {
     // ✅ Step 3: Collect ICE Candidates (Caller)
     var callerCandidatesCollection = roomRef.collection('callerCandidates');
 
-    peerConnection?.onIceCandidate = (RTCIceCandidate candidate) {
-      print('❄️ ICE Candidate (Caller): ${candidate.toMap()}');
-      callerCandidatesCollection.add(candidate.toMap());
+    peerConnection?.onIceCandidate = (RTCIceCandidate? candidate) {
+      if (candidate != null) {
+        print('❄️ ICE Candidate (Caller): ${candidate.toMap()}');
+        callerCandidatesCollection.add(candidate.toMap());
+      }
     };
 
     // ✅ Step 4: Create SDP Offer
-    RTCSessionDescription offer = await peerConnection!.createOffer();
+    RTCSessionDescription offer = await peerConnection!.createOffer(sdpConstraints);
+
     await peerConnection!.setLocalDescription(offer);
     print('📡 Created SDP Offer: $offer');
 
@@ -101,10 +128,13 @@ class Signaling {
 
       // ✅ Step 3: Collect ICE Candidates (Callee)
       var calleeCandidatesCollection = roomRef.collection('calleeCandidates');
-      peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        print('❄️ ICE Candidate (Callee): ${candidate.toMap()}');
-        calleeCandidatesCollection.add(candidate.toMap());
+      peerConnection!.onIceCandidate = (RTCIceCandidate? candidate) {
+        if (candidate != null) {
+          print('❄️ ICE Candidate (Callee): ${candidate.toMap()}');
+          calleeCandidatesCollection.add(candidate.toMap());
+        }
       };
+
 
       // ✅ Step 4: Get SDP Offer from Firestore
       var data = roomSnapshot.data() as Map<String, dynamic>;
@@ -115,7 +145,8 @@ class Signaling {
       );
 
       // ✅ Step 5: Create & Send SDP Answer
-      RTCSessionDescription answer = await peerConnection!.createAnswer();
+      RTCSessionDescription answer = await peerConnection!.createAnswer(sdpConstraints);
+
       await peerConnection!.setLocalDescription(answer);
 
       await roomRef.update({
@@ -217,10 +248,25 @@ class Signaling {
       print('ICE connection state change: $state');
     };
 
-    peerConnection?.onAddStream = (MediaStream stream) {
-      print("Add remote stream");
-      onAddRemoteStream?.call(stream);
-      remoteStream = stream;
+    peerConnection?.onTrack = (RTCTrackEvent event) {
+      print("🎥 ADMIN: Received remote track: ${event.track.kind}");
+      if (event.streams.isEmpty) return;
+
+      final stream = event.streams.first;
+
+      if (remoteStream?.id != stream.id) {
+        remoteStream = stream;
+        print("🎧 ADMIN: New remote stream: ${stream.id}");
+
+        // ✅ ENABLE AUDIO TRACKS
+        for (final audioTrack in stream.getAudioTracks()) {
+          print("🔊 ADMIN: Audio track found and enabled: ${audioTrack.id}");
+          audioTrack.enabled = true;
+        }
+
+        onAddRemoteStream?.call(stream);
+      }
     };
+
   }
 }

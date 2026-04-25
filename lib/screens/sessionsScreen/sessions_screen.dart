@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import '../../routes/router.dart';
 import '../../controllers/session_controller.dart';
+
 
 class SessionsScreen extends StatefulWidget {
   @override
@@ -16,6 +18,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   late AudioPlayer _player;
 
+
+  final List<StreamSubscription> _subscriptions = [];
 
   @override
   void initState() {
@@ -29,6 +33,9 @@ class _SessionsScreenState extends State<SessionsScreen> {
   void dispose() {
     _player.stop();
     _player.dispose();
+    for (var sub in _subscriptions) {
+      sub.cancel();
+    }
     super.dispose();
   }
 
@@ -36,6 +43,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
   /// 🔔 PLAY ALERT SOUND
   /// --------------------------
   Future<void> _playAlertSound() async {
+    if (!mounted) return; // ✅ Guard against playing sound after dispose
     try {
       await _player.stop(); // prevent overlap
       await _player.play(
@@ -47,34 +55,42 @@ class _SessionsScreenState extends State<SessionsScreen> {
     }
   }
 
+
   /// --------------------------
   /// 🔍 LISTEN FOR NEW QUEUE USERS
   /// --------------------------
   void _listenForQueueAlerts() {
     // CHAT QUEUE
-    controller.getConsultationsStream("queue", "Chat").listen((snapshot) {
-      if (!_isOnSessionsRoute) return; // 🔒 guard
+    _subscriptions.add(
+      controller.getConsultationsStream("queue", "Chat").listen((snapshot) {
+        if (!mounted) return;
+        if (!_isOnSessionsRoute) return; // 🔒 guard
 
-      for (final change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.added) {
-          _playAlertSound();
-          break;
+        for (final change in snapshot.docChanges) {
+          if (change.type == DocumentChangeType.added) {
+            _playAlertSound();
+            break;
+          }
         }
-      }
-    });
+      }),
+    );
 
     // TALK QUEUE
-    controller.getConsultationsStream("queue", "Talk").listen((snapshot) {
-      if (!_isOnSessionsRoute) return; // 🔒 guard
+    _subscriptions.add(
+      controller.getConsultationsStream("queue", "Talk").listen((snapshot) {
+        if (!mounted) return;
+        if (!_isOnSessionsRoute) return; // 🔒 guard
 
-      for (final change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.added) {
-          _playAlertSound();
-          break;
+        for (final change in snapshot.docChanges) {
+          if (change.type == DocumentChangeType.added) {
+            _playAlertSound();
+            break;
+          }
         }
-      }
-    });
+      }),
+    );
   }
+
 
 
   // -----------------------------------------------------------
@@ -218,12 +234,11 @@ class _SessionsScreenState extends State<SessionsScreen> {
   }
 
   bool get _isOnSessionsRoute {
-    final router = GoRouter.of(context);
-    final currentRoute =
-    router.routeInformationProvider.value.uri.toString();
-
+    // ✅ Use the global router instance to avoid context issues in listeners
+    final currentRoute = router.routeInformationProvider.value.uri.toString();
     return currentRoute.startsWith('/navigation/sessions');
   }
+
 
   List<Widget> _buildActionButtons(BuildContext context, String status,
       String userId, String sessionType, String fullName, String companyId) {

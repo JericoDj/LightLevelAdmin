@@ -82,7 +82,15 @@ class _CallPageWidgetState extends State<CallPageWidget> {
               ],
             ),
 
+            // ✅ HIDDEN REMOTE VIDEO (REQUIRED FOR AUDIO ON WEB)
+            SizedBox(
+              width: 1,
+              height: 1,
+              child: RTCVideoView(widget.remoteVideo),
+            ),
+
             // ✅ CONTROLS
+
             Column(
               children: [
                 Row(
