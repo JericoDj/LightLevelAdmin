@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import '../utils/rich_text_controller.dart';
 
 class ArticlesProvider extends ChangeNotifier {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -34,18 +35,18 @@ class ArticlesProvider extends ChangeNotifier {
                   : (value['sources'] != null && value['sources'].toString().isNotEmpty
                       ? [value['sources'].toString()]
                       : <String>[]),
-              'controller': TextEditingController(text: value['title']),
+              'controller': MindHubRichTextController()..text = value['title'] ?? '',
               'paragraphControllers': (value['paragraphs'] as List)
-                  .map<TextEditingController>(
-                      (para) => TextEditingController(text: para))
+                  .map<MindHubRichTextController>(
+                      (para) => MindHubRichTextController()..text = para ?? '')
                   .toList(),
               'sourcesControllers': (value['sources'] is List
                       ? List<String>.from(value['sources'])
                       : (value['sources'] != null && value['sources'].toString().isNotEmpty
                           ? [value['sources'].toString()]
                           : <String>[]))
-                  .map<TextEditingController>(
-                      (src) => TextEditingController(text: src))
+                  .map<MindHubRichTextController>(
+                      (src) => MindHubRichTextController()..text = src ?? '')
                   .toList(),
               'order': value['order'] ?? 0,
             });
@@ -78,12 +79,12 @@ class ArticlesProvider extends ChangeNotifier {
       final newEntry = {
         'thumbnail': url,
         'title': fileName,
-        'controller': TextEditingController(text: fileName),
+        'controller': MindHubRichTextController()..text = fileName,
         'order': fetchedArticles.length,
         'paragraphs': <String>[],
         'sources': <String>[],
-        'paragraphControllers': <TextEditingController>[],
-        'sourcesControllers': <TextEditingController>[],
+        'paragraphControllers': <MindHubRichTextController>[],
+        'sourcesControllers': <MindHubRichTextController>[],
       };
 
       fetchedArticles.add(newEntry);
@@ -181,7 +182,7 @@ class ArticlesProvider extends ChangeNotifier {
 
   void addParagraph(int articleIndex) {
     fetchedArticles[articleIndex]['paragraphControllers']
-        .add(TextEditingController());
+        .add(MindHubRichTextController());
     notifyListeners();
   }
 
@@ -211,7 +212,7 @@ class ArticlesProvider extends ChangeNotifier {
 
   void addSource(int articleIndex) {
     fetchedArticles[articleIndex]['sourcesControllers']
-        .add(TextEditingController());
+        .add(MindHubRichTextController());
     notifyListeners();
   }
 
@@ -274,7 +275,7 @@ class ArticlesProvider extends ChangeNotifier {
       c.dispose();
     }
     article['sourcesControllers'] = sources
-        .map((s) => TextEditingController(text: s))
+        .map((s) => MindHubRichTextController()..text = s)
         .toList();
 
     final paragraphs = article['paragraphs'] as List<String>;
@@ -286,7 +287,7 @@ class ArticlesProvider extends ChangeNotifier {
     }
 
     article['paragraphControllers'] = paragraphs
-        .map((p) => TextEditingController(text: p))
+        .map((p) => MindHubRichTextController()..text = p)
         .toList();
     notifyListeners();
   }
