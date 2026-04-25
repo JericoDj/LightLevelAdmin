@@ -1,6 +1,6 @@
-// ignore_for_file: must_be_immutable
-
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:get_storage/get_storage.dart';
@@ -17,6 +17,8 @@ class CallPage extends StatefulWidget {
 
   final String? sessionType;
   final String? userId;
+  final String? fullName;
+  final String? companyId;
 
   /// if roomId == null → create a new room
   /// if roomId != null → join an existing room
@@ -24,11 +26,12 @@ class CallPage extends StatefulWidget {
     Key? key,
     required this.roomId,
     required this.isCaller,
-
-
     this.sessionType,
     this.userId,
+    this.fullName,
+    this.companyId,
   }) : super(key: key);
+
 
   @override
   State<CallPage> createState() => _CallPageState();
@@ -44,6 +47,9 @@ class _CallPageState extends State<CallPage> {
   MediaStream? localStream;
 
   bool connectingLoading = true;
+  DateTime? startTime; // ✅ Track call start time
+  Timer? _timer;
+  int _seconds = 0;
 
   // media state
   bool isAudioOn = true;
@@ -212,7 +218,13 @@ class _CallPageState extends State<CallPage> {
       if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
           state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
         if (mounted) {
-          setState(() => connectingLoading = false);
+          setState(() {
+            connectingLoading = false;
+            if (startTime == null) {
+              startTime = DateTime.now(); // ✅ Start recording duration
+              _startTimer();
+            }
+          });
         }
       }
 
@@ -222,6 +234,18 @@ class _CallPageState extends State<CallPage> {
       }
     };
   }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _seconds++;
+        });
+      }
+    });
+  }
+
 
   // ------------------------------------------------------------
   // UI CALLBACKS
@@ -244,9 +268,86 @@ class _CallPageState extends State<CallPage> {
     setState(() {});
   }
 
-  void _leaveCall() {
-    if (mounted) Navigator.pop(context);
+  String _formatDuration(int totalSeconds) {
+    final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
   }
+
+  Future<void> _leaveCall() async {
+    _timer?.cancel();
+    
+    final String? uid = widget.userId;
+    if (uid != null && uid.isNotEmpty) {
+      final duration = _formatDuration(_seconds);
+      debugPrint("⏱️ Saving Call Duration: $duration for User: $uid");
+      
+      // ✅ Specific print requested by the user
+      print("Call ended, duration: $duration of $uid");
+
+      try {
+        debugPrint("📡 Firestore: Updating sessions collection...");
+        // ✅ 1. Update the 'sessions' collection for reports
+        await FirebaseFirestore.instance
+            .collection("sessions")
+            .doc(uid)
+            .update({
+          "status": "finished",
+          "duration": duration,
+          "endTime": FieldValue.serverTimestamp(),
+          "seconds": _seconds,
+        });
+        debugPrint("✅ Firestore: Sessions updated.");
+
+        debugPrint("📡 Firestore: Updating queue collection...");
+        // ✅ 2. Update the 'queue' collection to release the user
+        await FirebaseFirestore.instance
+            .collection("safe_talk")
+            .doc("talk")
+            .collection("queue")
+            .doc(uid)
+            .update({
+          "status": "finished",
+          "duration": duration,
+          "endTime": FieldValue.serverTimestamp(),
+        });
+        debugPrint("✅ Firestore: Queue updated.");
+
+        // ✅ 3. Update the 'reports' collection specifically for Data Analytics
+        if (widget.companyId != null && widget.fullName != null) {
+          debugPrint("📡 Firestore: Updating analytics report...");
+          final reportRef = FirebaseFirestore.instance
+              .collection('reports')
+              .doc('talkSession')
+              .collection(widget.companyId!)
+              .doc(widget.fullName!)
+              .collection('sessions');
+
+          await reportRef.add({
+            'fullName': widget.fullName,
+            'durationFormatted': duration,
+            'durationInSeconds': _seconds,
+            'timestampStarted': startTime != null 
+                ? Timestamp.fromDate(startTime!) 
+                : FieldValue.serverTimestamp(),
+            'status': 'finished',
+          });
+          debugPrint("📊 Data Analytics Report updated successfully");
+        } else {
+          debugPrint("⚠️ Analytics Report SKIPPED: companyId=${widget.companyId}, fullName=${widget.fullName}");
+        }
+      } catch (e) {
+        debugPrint("❌ FIREBASE ERROR: $e");
+        print("❌ FIREBASE ERROR: $e");
+      }
+
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
 
   // ------------------------------------------------------------
   // DISPOSE

@@ -79,16 +79,24 @@ final GoRouter router = GoRouter(
 
     // ✅ Call Route for Talk Sessions
     GoRoute(
-      path: '/navigation/talk/:roomId',
+      path: '/navigation/talk/:roomId/:userId/:fullName/:companyId',
       builder: (context, state) {
         final roomId = state.pathParameters['roomId']!;
+        final userId = state.pathParameters['userId']!;
+        final fullName = state.pathParameters['fullName']!;
+        final companyId = state.pathParameters['companyId']!;
 
         return CallPage(
           roomId: roomId,
+          userId: userId,
+          fullName: fullName,
+          companyId: companyId,
           isCaller: false, // ✅ ADMIN JOINS
         );
       },
     ),
+
+
 
 
     // ✅ New Support Call Route

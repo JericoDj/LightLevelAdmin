@@ -1,6 +1,5 @@
-import 'dart:async';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
@@ -16,79 +15,14 @@ class SessionsScreen extends StatefulWidget {
 class _SessionsScreenState extends State<SessionsScreen> {
   final SessionsController controller = SessionsController();
 
-  late AudioPlayer _player;
-
-
-  final List<StreamSubscription> _subscriptions = [];
-
   @override
   void initState() {
     super.initState();
-
-    _player = AudioPlayer();
-    _listenForQueueAlerts();
   }
 
   @override
   void dispose() {
-    _player.stop();
-    _player.dispose();
-    for (var sub in _subscriptions) {
-      sub.cancel();
-    }
     super.dispose();
-  }
-
-  /// --------------------------
-  /// 🔔 PLAY ALERT SOUND
-  /// --------------------------
-  Future<void> _playAlertSound() async {
-    if (!mounted) return; // ✅ Guard against playing sound after dispose
-    try {
-      await _player.stop(); // prevent overlap
-      await _player.play(
-        AssetSource('notify.mp3'),
-        volume: 1.0,
-      );
-    } catch (e) {
-      debugPrint("Sound error → $e");
-    }
-  }
-
-
-  /// --------------------------
-  /// 🔍 LISTEN FOR NEW QUEUE USERS
-  /// --------------------------
-  void _listenForQueueAlerts() {
-    // CHAT QUEUE
-    _subscriptions.add(
-      controller.getConsultationsStream("queue", "Chat").listen((snapshot) {
-        if (!mounted) return;
-        if (!_isOnSessionsRoute) return; // 🔒 guard
-
-        for (final change in snapshot.docChanges) {
-          if (change.type == DocumentChangeType.added) {
-            _playAlertSound();
-            break;
-          }
-        }
-      }),
-    );
-
-    // TALK QUEUE
-    _subscriptions.add(
-      controller.getConsultationsStream("queue", "Talk").listen((snapshot) {
-        if (!mounted) return;
-        if (!_isOnSessionsRoute) return; // 🔒 guard
-
-        for (final change in snapshot.docChanges) {
-          if (change.type == DocumentChangeType.added) {
-            _playAlertSound();
-            break;
-          }
-        }
-      }),
-    );
   }
 
 
@@ -183,6 +117,26 @@ class _SessionsScreenState extends State<SessionsScreen> {
     );
   }
 
+  // ✅ Improved Name Lookup
+  Future<String> _getUserName(String? userId) async {
+    if (userId == null || userId.isEmpty) return "Unknown";
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        return data?['fullName'] ?? data?['full_name'] ?? data?['name'] ?? userId;
+      }
+      final adminDoc = await FirebaseFirestore.instance.collection('admins').doc(userId).get();
+      if (adminDoc.exists) {
+        final data = adminDoc.data();
+        return data?['fullName'] ?? data?['full_name'] ?? data?['name'] ?? userId;
+      }
+    } catch (e) {
+      debugPrint("Error fetching name for $userId: $e");
+    }
+    return userId;
+  }
+
   Widget _buildSessionCard(
       BuildContext context, String status, Map<String, dynamic> data) {
     return Container(
@@ -205,8 +159,14 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("User: ${data["fullName"] ?? "Unknown"}",
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    FutureBuilder<String>(
+                      future: _getUserName(data["userId"]),
+                      builder: (context, snapshot) {
+                        String displayName = snapshot.data ?? data["fullName"] ?? "Unknown";
+                        return Text("User: $displayName",
+                            style: const TextStyle(fontWeight: FontWeight.bold));
+                      },
+                    ),
                     Text("Company: ${data["companyId"] ?? "Unknown"}",
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                     Text("Session: ${data["sessionType"] ?? "Unknown"}",
@@ -231,12 +191,6 @@ class _SessionsScreenState extends State<SessionsScreen> {
         ],
       ),
     );
-  }
-
-  bool get _isOnSessionsRoute {
-    // ✅ Use the global router instance to avoid context issues in listeners
-    final currentRoute = router.routeInformationProvider.value.uri.toString();
-    return currentRoute.startsWith('/navigation/sessions');
   }
 
 

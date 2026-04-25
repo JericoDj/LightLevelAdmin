@@ -63,7 +63,9 @@ class SessionsController {
       return;
     }
 
-    router.push('/navigation/talk/$callRoom');
+    router.push('/navigation/talk/$callRoom/$userId/$fullName/$companyId');
+
+
     print("✅ Joined talk session: $callRoom");
   }
 

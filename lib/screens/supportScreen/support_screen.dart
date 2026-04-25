@@ -11,7 +11,33 @@ class SupportScreen extends StatefulWidget {
 class _SupportScreenState extends State<SupportScreen> {
   final SupportController controller = SupportController();
 
+  // ✅ Improved Name Lookup
+  Future<String> _getUserName(String? userId) async {
+    if (userId == null || userId.isEmpty) return "Unknown";
+
+    try {
+      // 1. Try Users collection
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        return data?['fullName'] ?? data?['full_name'] ?? data?['name'] ?? userId;
+      }
+
+      // 2. Try Admins collection (fallback)
+      final adminDoc = await FirebaseFirestore.instance.collection('admins').doc(userId).get();
+      if (adminDoc.exists) {
+        final data = adminDoc.data();
+        return data?['fullName'] ?? data?['full_name'] ?? data?['name'] ?? userId;
+      }
+    } catch (e) {
+      debugPrint("Error fetching name for $userId: $e");
+    }
+
+    return userId; // Fallback to ID
+  }
+
   // ✅ Show Status Update Dialog
+
   void _showStatusDialog(BuildContext context, String userId) {
     showDialog(
       context: context,
@@ -117,15 +143,23 @@ class _SupportScreenState extends State<SupportScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Customer: ${data["userId"] ?? "Unknown"}",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    FutureBuilder<String>(
+                      future: _getUserName(data["userId"]),
+                      builder: (context, snapshot) {
+                        String displayName = snapshot.data ?? data["fullName"] ?? data["userId"] ?? "Unknown";
+                        return Text("Customer: $displayName",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis);
+                      },
+                    ),
+
                     Text("Issue: ${data["issueType"] ?? "Unknown"}",
                         style: TextStyle(color: Colors.grey.shade700)),
                   ],
                 ),
               ),
+
             ],
           ),
           const SizedBox(height: 12),

@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'package:audioplayers/audioplayers.dart'; // ✅ Added for sound
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
@@ -24,11 +28,103 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  int chatQueueCount = 0;
+  int talkQueueCount = 0;
+  StreamSubscription<QuerySnapshot>? _chatSub;
+
+  StreamSubscription<QuerySnapshot>? _talkSub;
+  final AudioPlayer _audioPlayer = AudioPlayer(); // ✅ Global Audio Player
+
+
   @override
   void initState() {
     super.initState();
     _loadUserRole();
+    _startGlobalSessionListeners();
   }
+
+  void _startGlobalSessionListeners() {
+    // 🎧 Listen to Chat Queue
+    _chatSub = _firestore
+        .collection('safe_talk/chat/queue')
+        .where('status', isEqualTo: 'queue')
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          chatQueueCount = snapshot.docs.length;
+        });
+        _showIncomingSessionNotification("Chat", snapshot);
+      }
+    });
+
+    // 🎧 Listen to Talk Queue
+    _talkSub = _firestore
+        .collection('safe_talk/talk/queue')
+        .where('status', isEqualTo: 'queue')
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          talkQueueCount = snapshot.docs.length;
+        });
+        _showIncomingSessionNotification("Talk", snapshot);
+      }
+    });
+  }
+
+  void _showIncomingSessionNotification(String type, QuerySnapshot snapshot) {
+    // 🔒 GUARD: Don't show or sound if not logged in
+    if (FirebaseAuth.instance.currentUser == null) return;
+
+    // Only show if a NEW document was added
+    for (var change in snapshot.docChanges) {
+
+      if (change.type == DocumentChangeType.added) {
+        final data = change.doc.data() as Map<String, dynamic>?;
+        final name = data?['fullName'] ?? 'Someone';
+        
+        _playSound();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.notifications_active, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(child: Text('New $type Session Request from $name')),
+                TextButton(
+                  onPressed: () => context.go('/navigation/sessions'),
+                  child: const Text('VIEW', style: TextStyle(color: Colors.yellow)),
+                ),
+              ],
+            ),
+            backgroundColor: MyColors.color1,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _chatSub?.cancel();
+    _talkSub?.cancel();
+    _audioPlayer.dispose(); // ✅ Cleanup
+    super.dispose();
+  }
+
+  void _playSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('notify.mp3'));
+    } catch (e) {
+      debugPrint("❌ Error playing sound: $e");
+    }
+  }
+
+
 
   // ✅ Load role from GetStorage
   Future<void> _loadUserRole() async {
@@ -262,8 +358,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(
               context, Icons.article, 'Contents', '/navigation/contents'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Sessions',
-              '/navigation/sessions'),
+              '/navigation/sessions', badgeCount: chatQueueCount + talkQueueCount),
           _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
+
               '/navigation/bookings'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Support',
               '/navigation/support'),
@@ -283,8 +380,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         return [
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
           _buildSidebarItem(context, Icons.video_camera_front, 'Sessions',
-              '/navigation/sessions'),
+              '/navigation/sessions', badgeCount: chatQueueCount + talkQueueCount),
           // _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
+
           _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
               '/navigation/bookings'),
           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets',
@@ -328,7 +426,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
   /// Sidebar Item
   Widget _buildSidebarItem(
-      BuildContext context, IconData icon, String title, String route) {
+      BuildContext context, IconData icon, String title, String route, {int badgeCount = 0}) {
     final currentRoute =
         GoRouter.of(context).routeInformationProvider.value.uri.toString();
     final bool isSelected = currentRoute == route;
@@ -345,18 +443,33 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           children: [
             Icon(icon, color: isSelected ? MyColors.color1 : Colors.grey),
             const SizedBox(width: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                color: isSelected ? MyColors.color1 : Colors.grey[800],
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isSelected ? MyColors.color1 : Colors.grey[800],
+                ),
               ),
             ),
+            if (badgeCount > 0)
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$badgeCount',
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
+
 
   /// Logout Button
   Widget _buildLogoutItem(BuildContext context) {
