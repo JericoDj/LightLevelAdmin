@@ -321,6 +321,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         '/navigation/bookings',
         '/navigation/tickets',
         '/navigation/community',
+        '/navigation/user-tracking',
       ].any(route.startsWith);
     }
 
@@ -355,21 +356,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
           _buildSidebarItem(context, Icons.people, 'User Management',
               '/navigation/user-management'),
-          _buildSidebarItem(
-              context, Icons.article, 'Contents', '/navigation/contents'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions',
-              '/navigation/sessions', badgeCount: chatQueueCount + talkQueueCount),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
-
-              '/navigation/bookings'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Support',
-              '/navigation/support'),
-
-          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets',
-              '/navigation/tickets'),
           _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics',
               '/navigation/dataanalytics'),
-
+          _buildSidebarItem(context, Icons.track_changes, 'User Tracking', '/navigation/user-tracking'),
           _buildSidebarItem(
               context, Icons.groups, 'Community', '/navigation/community'),
           // _buildSidebarItem(context, Icons.report, 'Reports', '/navigation/reports'),
@@ -379,14 +368,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       case 'Admin':
         return [
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
-          _buildSidebarItem(context, Icons.video_camera_front, 'Sessions',
-              '/navigation/sessions', badgeCount: chatQueueCount + talkQueueCount),
-          // _buildSidebarItem(context, Icons.video_camera_front, 'Support', '/navigation/support'),
-
-          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
-              '/navigation/bookings'),
           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets',
               '/navigation/tickets'),
+          _buildSidebarItem(context, Icons.track_changes, 'User Tracking', '/navigation/user-tracking'),
           _buildSidebarItem(
               context, Icons.groups, 'Community', '/navigation/community'),
           _buildLogoutItem(context),
