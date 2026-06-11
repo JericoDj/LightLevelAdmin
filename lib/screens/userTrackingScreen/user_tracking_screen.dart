@@ -288,7 +288,7 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "User Tracking & Interactions",
+            "Telemetry & Interactions",
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,

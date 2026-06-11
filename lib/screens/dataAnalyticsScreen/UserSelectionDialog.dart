@@ -18,6 +18,7 @@ class UserSelectionDialog extends StatefulWidget {
 
 class _UserSelectionDialogState extends State<UserSelectionDialog> {
   late List<String> selectedUsers;
+  late List<String> sortedUsers;
 
   bool get isAllSelected => selectedUsers.length == widget.allUsers.length;
 
@@ -25,6 +26,7 @@ class _UserSelectionDialogState extends State<UserSelectionDialog> {
   void initState() {
     super.initState();
     selectedUsers = List.from(widget.initiallySelected);
+    sortedUsers = List.from(widget.allUsers)..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
   }
 
   void _toggleSelectAll(bool? checked) {
@@ -50,9 +52,25 @@ class _UserSelectionDialogState extends State<UserSelectionDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Select Users',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Select Users',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: MyColors.color1.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${selectedUsers.length} users selected',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: MyColors.color1),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Expanded(
@@ -68,11 +86,13 @@ class _UserSelectionDialogState extends State<UserSelectionDialog> {
                       activeColor: MyColors.color1,
                     ),
                     const Divider(),
-                    ...widget.allUsers.map((user) {
+                    ...sortedUsers.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final user = entry.value;
                       final isSelected = selectedUsers.contains(user);
                       return CheckboxListTile(
                         value: isSelected,
-                        title: Text(user),
+                        title: Text('${index + 1}. $user'),
                         activeColor: MyColors.color1,
                         onChanged: (bool? checked) {
                           setState(() {

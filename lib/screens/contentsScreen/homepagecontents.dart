@@ -108,6 +108,49 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
     setState(() {});
   }
 
+  Future<void> _deleteImage(int index) async {
+    final imageToDelete = fetchedImages[index];
+    final url = imageToDelete['url'];
+
+    // Confirmation Dialog
+    bool confirm = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Delete Image"),
+            content: const Text("Are you sure you want to delete this image?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text("Delete"),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (confirm) {
+      final removed = fetchedImages.removeAt(index);
+      removed['controller'].dispose();
+      setState(() {});
+
+      // Update Firestore
+      await _updateFirestoreOrderAndTitles();
+
+      // Delete from Storage
+      try {
+        final ref = storage.refFromURL(url);
+        await ref.delete();
+      } catch (e) {
+        print("❌ Error deleting image from storage: $e");
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,7 +218,26 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
                                 Positioned(
                                   top: 4,
                                   right: 4,
-                                  child: Icon(Icons.drag_handle, color: Colors.grey[600], size: 20),
+                                  child: Icon(Icons.drag_handle,
+                                      color: Colors.white, size: 20),
+                                ),
+                                // Delete icon positioned top-left
+                                Positioned(
+                                  top: 4,
+                                  left: 4,
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        _deleteImage(fetchedImages.indexOf(img)),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.delete,
+                                          color: Colors.red, size: 18),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -211,14 +273,36 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
                       child: Column(
                         children: [
                           Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                img['url'],
-                                height: 113,
-                                width: 200,
-                                fit: BoxFit.cover,
-                              ),
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    img['url'],
+                                    height: 200,
+                                    width: 200,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                // Delete icon positioned top-left
+                                Positioned(
+                                  top: 4,
+                                  left: 4,
+                                  child: GestureDetector(
+                                    onTap: () => _deleteImage(
+                                        fetchedImages.indexOf(img)),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.delete,
+                                          color: Colors.red, size: 18),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           SizedBox(height: 20),

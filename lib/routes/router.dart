@@ -38,6 +38,7 @@ import '../screens/ticketsScreen/tickets_screen.dart';
 import '../screens/userManagementScreen/user_management_screen.dart';
 import '../screens/userTrackingScreen/user_tracking_screen.dart';
 import '../navigationBarMenu.dart';
+import '../screens/notificationsScreen/notifications_screen.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -138,6 +139,7 @@ final GoRouter router = GoRouter(
         GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
         GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
         GoRoute(path: '/navigation/user-tracking', builder: (context, state) => const UserTrackingScreen()),
+        GoRoute(path: '/navigation/notifications', builder: (context, state) => NotificationsScreen()),
         GoRoute(path: '/navigation/community', builder: (context, state) => CommunityScreen()),
         GoRoute(
           path: '/navigation/dataanalytics',

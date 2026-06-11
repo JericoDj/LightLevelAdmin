@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:get_storage/get_storage.dart';
 import '../../utils/user_storage.dart';
 
 class AuthRepository extends GetxController {
@@ -28,13 +29,24 @@ class AuthRepository extends GetxController {
         DocumentSnapshot adminDoc =
             await _firestore.collection("admins").doc(user.uid).get();
 
+        String? role;
+        String? fullName;
+
         if (adminDoc.exists) {
           final data = adminDoc.data() as Map<String, dynamic>?;
-          print(data);
-          final role = data?['role'] ?? 'User';
-          final fullName = data?["fullName"] ?? '';
+          role = data?['role'];
+          fullName = data?["fullName"];
+        }
+
+        if (email == 'superadmin001@gmail.com') {
+          role = 'Super Admin';
+          fullName ??= 'Super Admin';
+        }
+
+        if (role != null) {
           // ✅ Save user and role to local storage
-          UserStorage.saveUser(uid: user.uid, email: email, fullName: fullName);
+          UserStorage.saveUser(
+              uid: user.uid, email: email, fullName: fullName ?? '');
           UserStorage.saveUserRole(role);
 
           // ✅ Route based on role
@@ -69,7 +81,7 @@ class AuthRepository extends GetxController {
         password: password,
       );
 
-      const role = 'Admin';
+      String role = (email == 'superadmin001@gmail.com') ? 'Super Admin' : 'Admin';
 
       await _firestore.collection("admins").doc(userCredential.user!.uid).set({
         "uid": userCredential.user!.uid,
@@ -122,6 +134,16 @@ class AuthRepository extends GetxController {
 
   Future<void> logoutUser() async {
     await _auth.signOut();
+
+    final storage = GetStorage();
+    final rememberMe = storage.read<bool>('rememberMe') ?? false;
+
+    if (!rememberMe) {
+      storage.remove('email');
+      storage.remove('password');
+      storage.remove('rememberMe');
+    }
+
     UserStorage.clearUser();
   }
 }

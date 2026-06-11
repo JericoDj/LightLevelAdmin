@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lightlevelpsychosolutionsadmin/repository/authentication_repositories/authentication_repository.dart';
 import 'package:lightlevelpsychosolutionsadmin/routes/router.dart';
+import 'package:lightlevelpsychosolutionsadmin/utils/app_messenger.dart';
 import 'package:lightlevelpsychosolutionsadmin/screens/loginScreen/loginScreen.dart';
 import 'package:provider/provider.dart';
 
@@ -14,6 +15,7 @@ Widget build(BuildContext context) {
   return GetMaterialApp.router(
     title: 'Admin Panel',
     initialBinding: GeneralBindings(),
+    scaffoldMessengerKey: appMessengerKey,
     debugShowCheckedModeBanner: false,
     theme: ThemeData(primarySwatch: Colors.blue),
     routerDelegate: router.routerDelegate,

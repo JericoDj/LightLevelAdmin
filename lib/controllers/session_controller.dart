@@ -83,7 +83,11 @@ class SessionsController {
         : "safe_talk/talk/queue";
 
     try {
-      await firestore.collection(collectionPath).doc(userId).update({"status": newStatus});
+      Map<String, dynamic> updateData = {"status": newStatus};
+      if (newStatus == "finished" || newStatus == "cancelled") {
+        updateData["endedAt"] = FieldValue.serverTimestamp();
+      }
+      await firestore.collection(collectionPath).doc(userId).update(updateData);
       print("✅ Status updated: $userId → $newStatus");
     } catch (e) {
       print("❌ Error updating status: $e");
@@ -109,10 +113,14 @@ class SessionsController {
         "userId": fullName,
         "sessionType": sessionType,
         "status": "ongoing",
+        "startedAt": FieldValue.serverTimestamp(),
         "timestamp": FieldValue.serverTimestamp(),
       });
 
-      await userDoc.update({"status": "ongoing"});
+      await userDoc.update({
+        "status": "ongoing",
+        "startedAt": FieldValue.serverTimestamp(),
+      });
       print("🔥 User $userId admitted to session");
       print(fullName);
 

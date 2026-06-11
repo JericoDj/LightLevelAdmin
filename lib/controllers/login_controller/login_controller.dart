@@ -38,7 +38,9 @@ class LoginController extends GetxController {
       storage.write('email', emailController.text.trim());
       storage.write('password', passwordController.text.trim());
     } else {
-      storage.erase();
+      storage.remove('rememberMe');
+      storage.remove('email');
+      storage.remove('password');
     }
 
     await AuthRepository.instance.loginUser(

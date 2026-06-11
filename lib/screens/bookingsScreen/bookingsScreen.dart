@@ -273,6 +273,18 @@ class _BookingsScreenState extends State<BookingsScreen> {
     }
 
 
+    String? selectedService = booking['service'];
+    final List<String> serviceOptions = [
+      'Counselling/Coaching',
+      'Psychological Consultation/Psychotherapy',
+      'Psychiatric Consultation',
+      'Couple Therapy/Counselling/Family Counselling',
+      'Psychological Assessment'
+    ];
+    if (selectedService != null && !serviceOptions.contains(selectedService)) {
+      serviceOptions.add(selectedService);
+    }
+
     showDialog(
       context: context,
       builder: (context) {
@@ -283,7 +295,19 @@ class _BookingsScreenState extends State<BookingsScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Service: ${booking['service']}"),
+                DropdownButtonFormField<String>(
+                  value: selectedService,
+                  decoration: const InputDecoration(labelText: "Service"),
+                  items: serviceOptions.map((svc) {
+                    return DropdownMenuItem<String>(
+                      value: svc,
+                      child: Text(svc),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    selectedService = value;
+                  },
+                ),
                 Text("Consultation Type: ${booking['consultation_type']}"),
                 const SizedBox(height: 10),
 
@@ -400,6 +424,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   selectedTime ?? "",
                   selectedDate.toIso8601String().split('T')[0],
                   linkController.text.trim(),
+                  service: selectedService,
                 );
 
                 Navigator.pop(context);
@@ -421,6 +446,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       String dateRequested,
       String link, {
         String? resultLink,
+        String? service,
       }) async {
     try {
       Map<String, dynamic> updateData = {
@@ -433,6 +459,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       if (dateRequested.isNotEmpty) updateData['date_requested'] = dateRequested;
       if (link.isNotEmpty) updateData['meeting_link'] = link;
       if (resultLink != null && resultLink.isNotEmpty) updateData['result_link'] = resultLink;
+      if (service != null && service.isNotEmpty) updateData['service'] = service;
 
       await _firestore.collection('bookings').doc(consultationId).update(updateData);
       print("✅ Booking updated: $consultationId");

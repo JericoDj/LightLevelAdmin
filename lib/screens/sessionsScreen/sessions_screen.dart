@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import '../../routes/router.dart';
 import '../../controllers/session_controller.dart';
+import '../../widgets/waiting_time_widget.dart';
 
 
 class SessionsScreen extends StatefulWidget {
@@ -99,10 +100,32 @@ class _SessionsScreenState extends State<SessionsScreen> {
                       return const Center(child: Text("No consultations"));
                     }
 
+                    DateTime now = DateTime.now();
+                    var filteredDocs = snapshot.data!.docs.where((doc) {
+                      var docData = doc.data() as Map<String, dynamic>;
+                      Timestamp? t = docData['timestamp'];
+                      if (t == null) return false;
+                      DateTime d = t.toDate();
+                      return d.year == now.year && d.month == now.month && d.day == now.day;
+                    }).toList();
+
+                    filteredDocs.sort((a, b) {
+                      Timestamp? tA = (a.data() as Map<String, dynamic>)['timestamp'];
+                      Timestamp? tB = (b.data() as Map<String, dynamic>)['timestamp'];
+                      if (tA == null && tB == null) return 0;
+                      if (tA == null) return 1;
+                      if (tB == null) return -1;
+                      return tB.compareTo(tA);
+                    });
+
+                    if (filteredDocs.isEmpty) {
+                      return const Center(child: Text("No consultations today"));
+                    }
+
                     return ListView.builder(
-                      itemCount: snapshot.data!.docs.length,
+                      itemCount: filteredDocs.length,
                       itemBuilder: (context, index) {
-                        var data = snapshot.data!.docs[index].data()
+                        var data = filteredDocs[index].data()
                             as Map<String, dynamic>;
                         return _buildSessionCard(context, status, data);
                       },
@@ -118,23 +141,27 @@ class _SessionsScreenState extends State<SessionsScreen> {
   }
 
   // ✅ Improved Name Lookup
-  Future<String> _getUserName(String? userId) async {
-    if (userId == null || userId.isEmpty) return "Unknown";
+  Future<String?> _getUserName(String? userId) async {
+    if (userId == null || userId.isEmpty) return null;
     try {
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
       if (userDoc.exists) {
         final data = userDoc.data();
-        return data?['fullName'] ?? data?['full_name'] ?? data?['name'] ?? userId;
+        if (data?['fullName'] != null || data?['full_name'] != null || data?['name'] != null) {
+          return data?['fullName'] ?? data?['full_name'] ?? data?['name'];
+        }
       }
       final adminDoc = await FirebaseFirestore.instance.collection('admins').doc(userId).get();
       if (adminDoc.exists) {
         final data = adminDoc.data();
-        return data?['fullName'] ?? data?['full_name'] ?? data?['name'] ?? userId;
+        if (data?['fullName'] != null || data?['full_name'] != null || data?['name'] != null) {
+          return data?['fullName'] ?? data?['full_name'] ?? data?['name'];
+        }
       }
     } catch (e) {
       debugPrint("Error fetching name for $userId: $e");
     }
-    return userId;
+    return null;
   }
 
   Widget _buildSessionCard(
@@ -159,7 +186,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FutureBuilder<String>(
+                    FutureBuilder<String?>(
                       future: _getUserName(data["userId"]),
                       builder: (context, snapshot) {
                         String displayName = snapshot.data ?? data["fullName"] ?? "Unknown";
@@ -171,6 +198,17 @@ class _SessionsScreenState extends State<SessionsScreen> {
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                     Text("Session: ${data["sessionType"] ?? "Unknown"}",
                         style: TextStyle(color: Colors.grey.shade700)),
+                    if (status == "queue") ...[
+                      const SizedBox(height: 4),
+                      WaitingTimeWidget(
+                        queuedAt: data['timestamp'] as Timestamp?,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

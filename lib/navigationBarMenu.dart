@@ -9,6 +9,9 @@ import 'package:get_storage/get_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/user_storage.dart';
+import 'package:get/get.dart';
+import 'package:lightlevelpsychosolutionsadmin/controllers/login_controller/login_controller.dart';
+import 'repository/authentication_repositories/authentication_repository.dart';
 
 class NavigationBarMenuScreen extends StatefulWidget {
   final Widget child; // Accepts child for ShellRoute navigation
@@ -317,17 +320,23 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     if (role == 'Admin') {
       return [
         '/navigation/home',
+        '/navigation/contents',
         '/navigation/sessions',
         '/navigation/bookings',
         '/navigation/tickets',
         '/navigation/community',
         '/navigation/user-tracking',
+        '/navigation/support',
+        '/navigation/notifications',
       ].any(route.startsWith);
     }
 
     // SPECIALIST
     if (role == 'Specialist') {
-      return route.startsWith('/navigation/bookings');
+      return [
+        '/navigation/bookings',
+        '/navigation/sessions',
+      ].any(route.startsWith);
     }
 
     // CORPORATE
@@ -356,23 +365,46 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
           _buildSidebarItem(context, Icons.people, 'User Management',
               '/navigation/user-management'),
-          _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics',
-              '/navigation/dataanalytics'),
-          _buildSidebarItem(context, Icons.track_changes, 'User Tracking', '/navigation/user-tracking'),
+          _buildSidebarItem(
+              context, Icons.article, 'Contents', '/navigation/contents'),
+          _buildSidebarItem(context, Icons.chat, 'Sessions', '/navigation/sessions',
+              badgeCount: chatQueueCount + talkQueueCount),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
+              '/navigation/bookings'),
+          _buildSidebarItem(context, Icons.confirmation_number, 'Tickets',
+              '/navigation/tickets'),
+          _buildSidebarItem(context, Icons.track_changes, 'Telemetry',
+              '/navigation/user-tracking'),
           _buildSidebarItem(
               context, Icons.groups, 'Community', '/navigation/community'),
-          // _buildSidebarItem(context, Icons.report, 'Reports', '/navigation/reports'),
+          _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics',
+              '/navigation/dataanalytics'),
+          _buildSidebarItem(
+              context, Icons.notifications_active, 'Notifications', '/navigation/notifications'),
+          _buildSidebarItem(
+              context, Icons.support_agent, 'Support', '/navigation/support'),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
       case 'Admin':
         return [
           _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
+          _buildSidebarItem(
+              context, Icons.article, 'Contents', '/navigation/contents'),
+          _buildSidebarItem(context, Icons.chat, 'Sessions', '/navigation/sessions',
+              badgeCount: chatQueueCount + talkQueueCount),
+          _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
+              '/navigation/bookings'),
           _buildSidebarItem(context, Icons.confirmation_number, 'Tickets',
               '/navigation/tickets'),
-          _buildSidebarItem(context, Icons.track_changes, 'User Tracking', '/navigation/user-tracking'),
+          _buildSidebarItem(context, Icons.track_changes, 'Telemetry',
+              '/navigation/user-tracking'),
           _buildSidebarItem(
               context, Icons.groups, 'Community', '/navigation/community'),
+          _buildSidebarItem(
+              context, Icons.notifications_active, 'Notifications', '/navigation/notifications'),
+          _buildSidebarItem(
+              context, Icons.support_agent, 'Support', '/navigation/support'),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
@@ -380,6 +412,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         return [
           _buildSidebarItem(context, Icons.video_camera_front, 'Bookings',
               '/navigation/bookings'),
+          _buildSidebarItem(context, Icons.chat, 'Sessions', '/navigation/sessions',
+              badgeCount: chatQueueCount + talkQueueCount),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
@@ -388,8 +422,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.data_thresholding, 'Data Analytics',
               '/navigation/dataanalytics'),
           _buildLogoutItem(context),
+          _buildVersionInfoWidget(),
         ];
-        ;
       default: // For 'User'
         return [
           _buildLogoutItem(context),
@@ -459,11 +493,14 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
   Widget _buildLogoutItem(BuildContext context) {
     return GestureDetector(
       onTap: () async {
-        await FirebaseAuth.instance.signOut();
-        final storage = GetStorage();
-        await storage
-            .erase(); // 🔥 Clears all stored keys like 'user' and 'user_role'
-        context.go('/login');
+        await AuthRepository.instance.logoutUser();
+        // ✅ Delete LoginController to ensure fields are cleared when returning to LoginScreen
+        if (Get.isRegistered<LoginController>()) {
+          Get.delete<LoginController>();
+        }
+        if (mounted) {
+          context.go('/login');
+        }
       },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
@@ -488,12 +525,12 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         children: const [
           Divider(),
           Text(
-            'App Version: 2.0.14',
+            'App Version: 2.0.15',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
           SizedBox(height: 4),
           Text(
-            'Build Number: 14',
+            'Build Number: 15',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],
