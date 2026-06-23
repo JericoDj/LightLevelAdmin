@@ -19,6 +19,24 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
   List<Map<String, dynamic>> fetchedImages = [];
   bool isReordering = false;
 
+  final List<Map<String, String>> navigationTargets = [
+    {'value': 'none', 'label': 'No Navigation (None)'},
+    {'value': 'growth_garden_main', 'label': 'Growth Garden (Main Page)'},
+    {'value': 'spacehub_articles', 'label': 'Spacehub (Articles)'},
+    {'value': 'spacehub_videos', 'label': 'Spacehub (Videos)'},
+    {'value': 'spacehub_ebooks', 'label': 'Spacehub (Ebooks)'},
+    {'value': 'spacehub_insight_quest', 'label': 'Spacehub (Insight Quest)'},
+    {'value': 'spacehub_mindful_breathing', 'label': 'Spacehub (Mindful Breathing)'},
+    {'value': 'spacehub_quick_meditation', 'label': 'Spacehub (Quick Meditation)'},
+    {'value': 'book_now_main', 'label': 'Book Now (Main Page)'},
+    {'value': 'book_now_online', 'label': 'Book Now (Online pref.)'},
+    {'value': 'book_now_face_to_face', 'label': 'Book Now (Face to Face pref.)'},
+    {'value': 'safe_community', 'label': 'Safe Community'},
+    {'value': 'safe_talk_main', 'label': 'Safe Talk (Main Page)'},
+    {'value': 'safe_talk_chat', 'label': 'Safe Talk (Chat pref.)'},
+    {'value': 'safe_talk_call', 'label': 'Safe Talk (Call pref.)'},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +63,7 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
         'title': fileName,
         'controller': TextEditingController(text: fileName),
         'order': fetchedImages.length,
+        'navigateTo': 'none',
       };
 
       setState(() {
@@ -69,6 +88,7 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
             'title': value['title'] ?? key,
             'controller': TextEditingController(text: value['title'] ?? key),
             'order': value['order'] ?? 0,
+            'navigateTo': value['navigateTo'] ?? 'none',
           });
         }
       });
@@ -89,6 +109,7 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
         'url': fetchedImages[i]['url'],
         'title': fetchedImages[i]['controller'].text,
         'order': i,
+        'navigateTo': fetchedImages[i]['navigateTo'] ?? 'none',
       };
     }
 
@@ -179,8 +200,8 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
         child: Column(
           children: [
             Divider(height: 20),
-           Container(
-             height: 250,
+            Container(
+              height: 380,
               child: fetchedImages.isEmpty
                   ? Center(child: Column(
                     children: [
@@ -191,7 +212,7 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
 
                   /// Arranging
                   ? Container(
-                    height: 200,
+                    height: 380,
                     child: ReorderableListView(
                                     scrollDirection: Axis.horizontal,
                                     onReorder: _onReorder,
@@ -202,6 +223,7 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
                         width: 200,
                         margin: EdgeInsets.symmetric(horizontal: 8),
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Stack(
                               children: [
@@ -251,6 +273,33 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
                               ),
                               onSubmitted: (_) => _updateFirestoreOrderAndTitles(),
                             ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: img['navigateTo'] ?? 'none',
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                                border: OutlineInputBorder(),
+                                labelText: 'Navigation Link',
+                                labelStyle: TextStyle(fontSize: 12),
+                              ),
+                              items: navigationTargets.map((target) {
+                                return DropdownMenuItem<String>(
+                                  value: target['value'],
+                                  child: Text(
+                                    target['label']!,
+                                    style: const TextStyle(fontSize: 11),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                setState(() {
+                                  img['navigateTo'] = val;
+                                });
+                                _updateFirestoreOrderAndTitles();
+                              },
+                            ),
                           ],
                         ),
                       );
@@ -267,53 +316,79 @@ class _HomePageContentScreenState extends State<HomePageContentScreen> {
                 children: [
                   ...fetchedImages.map((img) {
                     return Container(
-                      height: 100,
-                      width:200,
+                      width: 200,
                       margin: EdgeInsets.symmetric(horizontal: 8),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    img['url'],
-                                    height: 200,
-                                    width: 200,
-                                    fit: BoxFit.cover,
-                                  ),
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  img['url'],
+                                  height: 160,
+                                  width: 200,
+                                  fit: BoxFit.cover,
                                 ),
-                                // Delete icon positioned top-left
-                                Positioned(
-                                  top: 4,
-                                  left: 4,
-                                  child: GestureDetector(
-                                    onTap: () => _deleteImage(
-                                        fetchedImages.indexOf(img)),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black54,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(Icons.delete,
-                                          color: Colors.red, size: 18),
+                              ),
+                              // Delete icon positioned top-left
+                              Positioned(
+                                top: 4,
+                                left: 4,
+                                child: GestureDetector(
+                                  onTap: () => _deleteImage(
+                                      fetchedImages.indexOf(img)),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
                                     ),
+                                    child: Icon(Icons.delete,
+                                        color: Colors.red, size: 18),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          SizedBox(height: 20),
+                          const SizedBox(height: 8),
                           TextField(
                             controller: img['controller'],
                             textAlign: TextAlign.center,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(vertical: 6),
                               border: OutlineInputBorder(),
                             ),
                             onSubmitted: (_) =>
                                 _updateFirestoreOrderAndTitles(),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: img['navigateTo'] ?? 'none',
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                              border: OutlineInputBorder(),
+                              labelText: 'Navigation Link',
+                              labelStyle: TextStyle(fontSize: 12),
+                            ),
+                            items: navigationTargets.map((target) {
+                              return DropdownMenuItem<String>(
+                                value: target['value'],
+                                child: Text(
+                                  target['label']!,
+                                  style: const TextStyle(fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                img['navigateTo'] = val;
+                              });
+                              _updateFirestoreOrderAndTitles();
+                            },
                           ),
                         ],
                       ),
