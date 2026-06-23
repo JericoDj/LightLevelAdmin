@@ -884,6 +884,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         '/navigation/user-tracking',
         '/navigation/support',
         '/navigation/notifications',
+        '/navigation/dataanalytics',
       ].any(route.startsWith);
     }
 
@@ -927,10 +928,10 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     switch (userRole) {
       case 'Super Admin':
         return [
-          _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
-          _buildSidebarItem(context, Icons.people, 'User Management',
+          _buildSidebarItem(context, Icons.home_outlined, 'Home', '/navigation/home'),
+          _buildSidebarItem(context, Icons.people_outline, 'User Management',
               '/navigation/user-management'),
-          _buildSidebarItem(context, Icons.folder, 'Content Library',
+          _buildSidebarItem(context, Icons.description_outlined, 'Contents',
               '/navigation/contents'),
           _buildSidebarItem(
               context, Icons.chat_bubble_outline, 'Sessions', '/navigation/sessions',
@@ -941,23 +942,23 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(
               context, Icons.confirmation_number_outlined, 'Tickets', '/navigation/tickets',
               badgeCount: openTicketsCount),
-          _buildSidebarItem(context, Icons.bar_chart, 'Reports',
-              '/navigation/reports'),
+          _buildSidebarItem(context, Icons.sensors, 'Telemetry',
+              '/navigation/user-tracking'),
           _buildSidebarItem(context, Icons.group_outlined, 'Community',
               '/navigation/community',
               badgeCount: pendingPostsCount),
-          _buildSidebarItem(context, Icons.remove_red_eye_outlined, 'User Tracking',
-              '/navigation/user-tracking'),
+          _buildSidebarItem(context, Icons.bar_chart, 'Data Analytics',
+              '/navigation/dataanalytics'),
+          _buildSidebarItem(context, Icons.notifications_none_outlined, 'Notifications', '/navigation/notifications'),
           _buildSidebarItem(
-              context, Icons.support_agent_outlined, 'Customer Support', '/navigation/support'),
-          _buildSidebarItem(context, Icons.notifications, 'Notification Screen', '/navigation/notifications'),
+              context, Icons.support_agent_outlined, 'Support', '/navigation/support'),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
       case 'Admin':
         return [
-          _buildSidebarItem(context, Icons.home, 'Home', '/navigation/home'),
-          _buildSidebarItem(context, Icons.folder, 'Content Library',
+          _buildSidebarItem(context, Icons.home_outlined, 'Home', '/navigation/home'),
+          _buildSidebarItem(context, Icons.description_outlined, 'Contents',
               '/navigation/contents'),
           _buildSidebarItem(
               context, Icons.chat_bubble_outline, 'Sessions', '/navigation/sessions',
@@ -968,12 +969,16 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(
               context, Icons.confirmation_number_outlined, 'Tickets', '/navigation/tickets',
               badgeCount: openTicketsCount),
+          _buildSidebarItem(context, Icons.sensors, 'Telemetry',
+              '/navigation/user-tracking'),
           _buildSidebarItem(context, Icons.group_outlined, 'Community',
               '/navigation/community',
               badgeCount: pendingPostsCount),
+          _buildSidebarItem(context, Icons.bar_chart, 'Data Analytics',
+              '/navigation/dataanalytics'),
+          _buildSidebarItem(context, Icons.notifications_none_outlined, 'Notifications', '/navigation/notifications'),
           _buildSidebarItem(
-              context, Icons.support_agent_outlined, 'Customer Support', '/navigation/support'),
-          _buildSidebarItem(context, Icons.notifications, 'Notification Screen', '/navigation/notifications'),
+              context, Icons.support_agent_outlined, 'Support', '/navigation/support'),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
