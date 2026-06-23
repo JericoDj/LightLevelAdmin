@@ -58,7 +58,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _playSound() async {
     try {
-      await _audioPlayer.play(AssetSource('notify.mp3'));
+      await _audioPlayer.play(AssetSource('messages.mp3'));
     } catch (e) {
       print("Error playing sound: $e");
     }
