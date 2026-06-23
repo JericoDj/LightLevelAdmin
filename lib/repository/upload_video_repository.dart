@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,11 +11,13 @@ class VideoRepository {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   /// **Upload Video to Firebase Storage**
-  Future<String> uploadVideo(File videoFile) async {
+  ///
+  /// Takes raw bytes (via `putData`) so it works on web as well as mobile.
+  Future<String> uploadVideo(Uint8List videoBytes) async {
     try {
       String filePath = 'videos/${DateTime.now().millisecondsSinceEpoch}.mp4';
       Reference ref = _storage.ref().child(filePath);
-      UploadTask uploadTask = ref.putFile(videoFile);
+      UploadTask uploadTask = ref.putData(videoBytes, SettableMetadata(contentType: 'video/mp4'));
       TaskSnapshot snapshot = await uploadTask.whenComplete(() => {});
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
@@ -25,11 +26,11 @@ class VideoRepository {
   }
 
   /// **Upload Thumbnail to Firebase Storage**
-  Future<String> uploadThumbnail(File thumbnailFile) async {
+  Future<String> uploadThumbnail(Uint8List thumbnailBytes) async {
     try {
       String filePath = 'thumbnails/${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = _storage.ref().child(filePath);
-      UploadTask uploadTask = ref.putFile(thumbnailFile);
+      UploadTask uploadTask = ref.putData(thumbnailBytes, SettableMetadata(contentType: 'image/jpeg'));
       TaskSnapshot snapshot = await uploadTask.whenComplete(() => {});
       return await snapshot.ref.getDownloadURL();
     } catch (e) {

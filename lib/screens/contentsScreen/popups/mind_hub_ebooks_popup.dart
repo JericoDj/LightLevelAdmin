@@ -1,9 +1,11 @@
-import 'dart:io';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../models/ebooks_model.dart';
 import '../../../repository/ebooks_repository.dart';
+import '../../../utils/app_messenger.dart';
 
 
 void showMindHubEbooksDialog(BuildContext context, List<Ebook> ebooks) {
@@ -156,12 +158,16 @@ void showEbookDialog(BuildContext context, List<Ebook> ebooks, Ebook? ebookToEdi
   String? coverUrl;
   String? ebookFileUrl;
 
-  File? pickedCover;
-  File? pickedEbook;
+  Uint8List? pickedCover;
+  String? pickedEbookName;
+  bool isUploadingCover = false;
+  bool isUploadingEbook = false;
 
   showDialog(
     context: context,
     builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
       return Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
@@ -186,40 +192,75 @@ void showEbookDialog(BuildContext context, List<Ebook> ebooks, Ebook? ebookToEdi
 
               // **Cover Picker**
               GestureDetector(
-                onTap: () async {
-                  final ImagePicker picker = ImagePicker();
-                  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-                  if (image != null) {
-                    pickedCover = File(image.path);
-                    coverUrl = await ebookRepo.uploadCover(pickedCover!);
-                  }
-                },
+                onTap: isUploadingCover
+                    ? null
+                    : () async {
+                        try {
+                          final ImagePicker picker = ImagePicker();
+                          final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                          if (image == null) return;
+
+                          final bytes = await image.readAsBytes();
+                          setState(() {
+                            pickedCover = bytes;
+                            isUploadingCover = true;
+                          });
+
+                          coverUrl = await ebookRepo.uploadCover(bytes);
+                          showAppSnackBar("Cover uploaded.");
+                        } catch (e) {
+                          showAppSnackBar("Failed to upload cover: $e", isError: true);
+                        } finally {
+                          setState(() => isUploadingCover = false);
+                        }
+                      },
                 child: Container(
                   width: double.infinity,
                   height: 150,
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.blue),
                   ),
-                  child: pickedCover == null
-                      ? Center(child: Text("Click to upload cover image"))
-                      : Image.file(pickedCover!, fit: BoxFit.cover),
+                  child: isUploadingCover
+                      ? const Center(child: CircularProgressIndicator())
+                      : pickedCover == null
+                          ? Center(child: Text("Click to upload cover image"))
+                          : Image.memory(pickedCover!, fit: BoxFit.cover),
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // **Ebook File Picker**
+              // **Ebook File Picker (PDF)**
               ElevatedButton.icon(
-                onPressed: () async {
-                  final ImagePicker picker = ImagePicker();
-                  final XFile? ebook = await picker.pickImage(source: ImageSource.gallery);
-                  if (ebook != null) {
-                    pickedEbook = File(ebook.path);
-                    ebookFileUrl = await ebookRepo.uploadEbook(pickedEbook!);
-                  }
-                },
-                icon: Icon(Icons.upload_file),
-                label: Text("Upload Ebook"),
+                onPressed: isUploadingEbook
+                    ? null
+                    : () async {
+                        try {
+                          final result = await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ['pdf'],
+                            withData: true,
+                          );
+                          final bytes = result?.files.single.bytes;
+                          if (bytes == null) return;
+
+                          setState(() {
+                            pickedEbookName = result!.files.single.name;
+                            isUploadingEbook = true;
+                          });
+
+                          ebookFileUrl = await ebookRepo.uploadEbook(bytes);
+                          showAppSnackBar("Ebook file uploaded.");
+                        } catch (e) {
+                          showAppSnackBar("Failed to upload ebook: $e", isError: true);
+                        } finally {
+                          setState(() => isUploadingEbook = false);
+                        }
+                      },
+                icon: isUploadingEbook
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Icon(Icons.upload_file),
+                label: Text(pickedEbookName ?? "Upload Ebook"),
               ),
 
               const SizedBox(height: 16),
@@ -275,6 +316,8 @@ void showEbookDialog(BuildContext context, List<Ebook> ebooks, Ebook? ebookToEdi
             ],
           ),
         ),
+      );
+        },
       );
     },
   );

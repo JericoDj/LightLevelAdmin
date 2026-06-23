@@ -95,11 +95,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
                       child: ListTile(
-                        title: Text(post["username"]),
+                        title: Text(post["username"] ?? "Unknown user"),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(post["content"]),
+                            Text(post["content"] ?? ""),
                             if (status == "approved")
                               Row(
                                 children: [
@@ -153,7 +153,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 const Text("Review Post",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue)),
                 const SizedBox(height: 12),
-                Text(post["content"], style: const TextStyle(fontSize: 16)),
+                Text(post["content"] ?? "", style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -251,7 +251,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     itemCount: likes.length,
                     itemBuilder: (context, index) => ListTile(
                       leading: const Icon(Icons.person, color: Colors.blue),
-                      title: Text(likes[index]),
+                      title: Text(likes[index].toString()),
                     ),
                   )
                       : const Center(child: Text("No likes yet")),

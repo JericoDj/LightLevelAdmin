@@ -8,6 +8,7 @@ import 'package:lightlevelpsychosolutionsadmin/screens/sessionsScreen/CallPageWi
 import 'package:provider/provider.dart';
 
 import '../test/test/services/webrtc_service.dart';
+import '../../controllers/session_controller.dart';
 
 
 class CallPage extends StatefulWidget {
@@ -344,7 +345,11 @@ class _CallPageState extends State<CallPage> {
     }
 
     if (mounted) {
-      Navigator.pop(context);
+      if (SessionsController.activeSessionNotifier.value?.userId == widget.userId) {
+        SessionsController.activeSessionNotifier.value = null;
+      } else {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -354,6 +359,8 @@ class _CallPageState extends State<CallPage> {
   // ------------------------------------------------------------
   @override
   void dispose() {
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
     peerConnection?.close();
     localStream?.getTracks().forEach((t) => t.stop());
     localVideo.dispose();

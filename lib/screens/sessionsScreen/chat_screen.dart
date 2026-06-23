@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../../utils/colors.dart';
 
@@ -15,7 +17,6 @@ class ChatScreen extends StatefulWidget {
   @override
   _ChatScreenState createState() => _ChatScreenState();
 }
-// relay1.expressturn.com:3480
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
@@ -23,11 +24,53 @@ class _ChatScreenState extends State<ChatScreen> {
   late String chatRoomId;
   String? currentAdminUid;
 
+  StreamSubscription<QuerySnapshot>? _messageSubscription;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isInitialLoad = true;
+
   @override
   void initState() {
     super.initState();
     chatRoomId = "safe_talk/chat/sessions/${widget.userId}/messages";
     _getCurrentAdminUid();
+    _initAudio();
+  }
+
+  void _initAudio() {
+    _messageSubscription = FirebaseFirestore.instance
+        .collection(chatRoomId)
+        .orderBy("timestamp", descending: false)
+        .snapshots()
+        .listen((snapshot) {
+      if (_isInitialLoad) {
+        _isInitialLoad = false;
+        return;
+      }
+      if (snapshot.docs.isNotEmpty) {
+        final lastMessage = snapshot.docs.last.data() as Map<String, dynamic>;
+        final senderId = lastMessage["senderId"];
+        if (senderId != currentAdminUid && senderId != "system") {
+          _playSound();
+        }
+      }
+    });
+  }
+
+  void _playSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('notify.mp3'));
+    } catch (e) {
+      print("Error playing sound: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _messageSubscription?.cancel();
+    _audioPlayer.dispose();
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _getCurrentAdminUid() async {
@@ -49,7 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final sessionSnapshot = await sessionRef.get();
 
-    if (!mounted) return; // ✅ important
+    if (!mounted) return;
 
     // Check if chat is finished/cancelled
     if (sessionSnapshot.exists) {
@@ -64,14 +107,13 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     }
 
-    // ✅ Cache message before await
     await FirebaseFirestore.instance.collection(chatRoomId).add({
       "senderId": currentAdminUid,
       "message": text,
       "timestamp": FieldValue.serverTimestamp(),
     });
 
-    if (!mounted) return; // ✅ protect UI calls
+    if (!mounted) return;
 
     _messageController.clear();
     _scrollToBottom();
@@ -135,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> {
         "adminId": currentAdminUid,
         "status": "finished",
         "timestamp": timestamp,
-        "messages": messages, // 🔥 full message list
+        "messages": messages,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -151,8 +193,6 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
   }
-
-
 
   void _cancelChat() async {
     final sessionRef = FirebaseFirestore.instance
@@ -219,6 +259,35 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _putOnHoldChat() async {
+    final sessionRef = FirebaseFirestore.instance
+        .collection("safe_talk/chat/queue")
+        .doc(widget.userId);
+
+    try {
+      // Update the queue status
+      await sessionRef.update({"status": "on_hold"});
+
+      // Add system message
+      await FirebaseFirestore.instance.collection(chatRoomId).add({
+        "senderId": "system",
+        "message": "⏸️ Admin has put the chat on hold.",
+        "timestamp": FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("⏸️ Chat session put on hold.")),
+      );
+
+      await Future.delayed(const Duration(seconds: 1));
+      _closeWindow();
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Error putting chat on hold: $e")),
+      );
+    }
+  }
 
   void _closeWindow() {
     GoRouter.of(context).go('/navigation/sessions');
@@ -228,39 +297,40 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-
-        title:
-
-
-        Row(
+        title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-
-        Container(child: Text("Chat Session with ${widget.fullName}")),
-          Container(child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: _finishChat,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  child: const Text("Finish Chat", style: TextStyle(color: Colors.white),),
+            Container(child: Text("Chat Session with ${widget.fullName}")),
+            Container(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _putOnHoldChat,
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700),
+                      child: const Text("Put On Hold", style: TextStyle(color: Colors.white)),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: _finishChat,
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      child: const Text("Finish Chat", style: TextStyle(color: Colors.white)),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: _cancelChat,
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text("Cancel Chat", style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10,),
-                ElevatedButton(
-                  onPressed: _cancelChat,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: const Text("Cancel Chat", style: TextStyle(color: Colors.white),),
-                ),
-              ],
+              ),
             ),
-          ),)
-
-
-        ],),
+          ],
+        ),
         automaticallyImplyLeading: false,
-
       ),
       body: Column(
         children: [
@@ -320,36 +390,81 @@ class _ChatScreenState extends State<ChatScreen> {
                 .snapshots(),
             builder: (context, snapshot) {
               bool isFinished = false;
+              bool isOnHold = false;
               if (snapshot.hasData && snapshot.data!.exists) {
                 final status = snapshot.data!["status"];
                 isFinished = status == "finished" || status == "cancelled";
+                isOnHold = status == "on_hold";
+              }
+
+              if (isFinished) {
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      "✅ This chat session has ended. You cannot send messages.",
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+
+              if (isOnHold) {
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.shade800),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "⏸️ Session is on hold",
+                          style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await FirebaseFirestore.instance
+                                .collection("safe_talk/chat/queue")
+                                .doc(widget.userId)
+                                .update({"status": "ongoing"});
+                            await FirebaseFirestore.instance.collection(chatRoomId).add({
+                              "senderId": "system",
+                              "message": "▶️ Admin has resumed the chat.",
+                              "timestamp": FieldValue.serverTimestamp(),
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade800),
+                          child: const Text("Resume Chat", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               }
 
               return Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: isFinished
-                    ? Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    "✅ This chat session has ended. You cannot send messages.",
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                )
-                    : Row(
+                child: Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _messageController,
                         maxLines: 3, // ✅ REQUIRED FOR WEB
                         textInputAction: TextInputAction.send,
-                        onSubmitted: (_) =>{
+                        onSubmitted: (_) => {
                           _sendMessage()
-                        }, // ✅ Enter triggers
+                        },
                         decoration: InputDecoration(
                           hintText: "Type a message...",
                           border: OutlineInputBorder(
@@ -367,7 +482,6 @@ class _ChatScreenState extends State<ChatScreen> {
               );
             },
           ),
-
         ],
       ),
     );

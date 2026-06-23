@@ -1,8 +1,9 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../models/videos_models.dart';
 import '../../../repository/upload_video_repository.dart';
+import '../../../utils/app_messenger.dart';
 
 void showMindHubVideosDialog(BuildContext context, List<Video> videos) {
   showDialog(
@@ -154,12 +155,16 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
   String? thumbnailUrl;
   String? videoUrl;
 
-  File? pickedThumbnail;
-  File? pickedVideo;
+  Uint8List? pickedThumbnail;
+  Uint8List? pickedVideo;
+  bool isUploadingThumbnail = false;
+  bool isUploadingVideo = false;
 
   showDialog(
     context: context,
     builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
       return Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
@@ -184,23 +189,39 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
 
               // **Thumbnail Picker**
               GestureDetector(
-                onTap: () async {
-                  final ImagePicker picker = ImagePicker();
-                  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-                  if (image != null) {
-                    pickedThumbnail = File(image.path);
-                    thumbnailUrl = await videoRepo.uploadThumbnail(pickedThumbnail!);
-                  }
-                },
+                onTap: isUploadingThumbnail
+                    ? null
+                    : () async {
+                        try {
+                          final ImagePicker picker = ImagePicker();
+                          final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                          if (image == null) return;
+
+                          final bytes = await image.readAsBytes();
+                          setState(() {
+                            pickedThumbnail = bytes;
+                            isUploadingThumbnail = true;
+                          });
+
+                          thumbnailUrl = await videoRepo.uploadThumbnail(bytes);
+                          showAppSnackBar("Thumbnail uploaded.");
+                        } catch (e) {
+                          showAppSnackBar("Failed to upload thumbnail: $e", isError: true);
+                        } finally {
+                          setState(() => isUploadingThumbnail = false);
+                        }
+                      },
                 child: Container(
                   width: double.infinity,
                   height: 150,
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.blue),
                   ),
-                  child: pickedThumbnail == null
-                      ? Center(child: Text("Click to upload thumbnail"))
-                      : Image.file(pickedThumbnail!, fit: BoxFit.cover),
+                  child: isUploadingThumbnail
+                      ? const Center(child: CircularProgressIndicator())
+                      : pickedThumbnail == null
+                          ? Center(child: Text("Click to upload thumbnail"))
+                          : Image.memory(pickedThumbnail!, fit: BoxFit.cover),
                 ),
               ),
 
@@ -208,16 +229,32 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
 
               // **Video Picker**
               ElevatedButton.icon(
-                onPressed: () async {
-                  final ImagePicker picker = ImagePicker();
-                  final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
-                  if (video != null) {
-                    pickedVideo = File(video.path);
-                    videoUrl = await videoRepo.uploadVideo(pickedVideo!);
-                  }
-                },
-                icon: Icon(Icons.video_library),
-                label: Text("Pick Video"),
+                onPressed: isUploadingVideo
+                    ? null
+                    : () async {
+                        try {
+                          final ImagePicker picker = ImagePicker();
+                          final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
+                          if (video == null) return;
+
+                          final bytes = await video.readAsBytes();
+                          setState(() {
+                            pickedVideo = bytes;
+                            isUploadingVideo = true;
+                          });
+
+                          videoUrl = await videoRepo.uploadVideo(bytes);
+                          showAppSnackBar("Video uploaded.");
+                        } catch (e) {
+                          showAppSnackBar("Failed to upload video: $e", isError: true);
+                        } finally {
+                          setState(() => isUploadingVideo = false);
+                        }
+                      },
+                icon: isUploadingVideo
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Icon(Icons.video_library),
+                label: Text(pickedVideo != null ? "Video selected" : "Pick Video"),
               ),
 
               const SizedBox(height: 16),
@@ -273,6 +310,8 @@ void showVideoDialog(BuildContext context, List<Video> videos, Video? videoToEdi
             ],
           ),
         ),
+      );
+        },
       );
     },
   );

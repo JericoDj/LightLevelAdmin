@@ -41,7 +41,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
           title: const Text("Update Session Status"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            children: ["Queue", "Ongoing", "Finished", "Cancelled"]
+            children: ["Queue", "Ongoing", "On Hold", "Finished", "Cancelled"]
                 .map((status) => ListTile(
                       title: Text(status),
                       onTap: () {
@@ -49,7 +49,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                           context,
                           userId,
                           sessionType,
-                          status.toLowerCase(),
+                          status == "On Hold" ? "on_hold" : status.toLowerCase(),
                         );
                         Navigator.pop(dialogContext);
                       },
@@ -100,11 +100,12 @@ class _SessionsScreenState extends State<SessionsScreen> {
                       return const Center(child: Text("No consultations"));
                     }
 
-                    DateTime now = DateTime.now();
                     var filteredDocs = snapshot.data!.docs.where((doc) {
                       var docData = doc.data() as Map<String, dynamic>;
                       Timestamp? t = docData['timestamp'];
                       if (t == null) return false;
+                      if (status == "on_hold") return true; // Show all on-hold sessions, not just today
+                      DateTime now = DateTime.now();
                       DateTime d = t.toDate();
                       return d.year == now.year && d.month == now.month && d.day == now.day;
                     }).toList();
@@ -215,8 +216,10 @@ class _SessionsScreenState extends State<SessionsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
             children: _buildActionButtons(
               context,
               status,
@@ -248,8 +251,31 @@ class _SessionsScreenState extends State<SessionsScreen> {
       ];
     }
 
-    if (status == "ongoing" || status == "finished") {
+    if (status == "ongoing" || status == "finished" || status == "on_hold") {
       return [
+        if (status == "ongoing") ...[
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            onPressed: () {
+              controller.openSession(userId, sessionType, fullName, companyId);
+            },
+            child: const Text("Open Chat/Call",
+                style: TextStyle(color: Colors.white)),
+          ),
+          const SizedBox(width: 8),
+        ],
+        if (status == "on_hold") ...[
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () async {
+              await controller.resumeSession(userId, sessionType);
+              controller.openSession(userId, sessionType, fullName, companyId);
+            },
+            child: const Text("Resume Chat",
+                style: TextStyle(color: Colors.white)),
+          ),
+          const SizedBox(width: 8),
+        ],
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
           onPressed: () => _showStatusDialog(context, userId, sessionType),
@@ -292,6 +318,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 _buildConsultationSection(
                     "Ongoing", "ongoing", "Chat", Colors.green),
                 _buildConsultationSection(
+                    "On Hold", "on_hold", "Chat", Colors.amber),
+                _buildConsultationSection(
                     "Finished", "finished", "Chat", Colors.orange),
                 _buildConsultationSection(
                     "Cancelled", "cancelled", "Chat", Colors.red),
@@ -306,6 +334,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
                     "Queue", "queue", "Talk", Colors.blueAccent),
                 _buildConsultationSection(
                     "Ongoing", "ongoing", "Talk", Colors.green),
+                _buildConsultationSection(
+                    "On Hold", "on_hold", "Talk", Colors.amber),
                 _buildConsultationSection(
                     "Finished", "finished", "Talk", Colors.orange),
                 _buildConsultationSection(

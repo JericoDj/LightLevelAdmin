@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/ebooks_model.dart';
@@ -7,11 +7,13 @@ class EbookRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  /// Upload cover image to Firebase Storage
-  Future<String> uploadCover(File coverImage) async {
+  /// Upload cover image to Firebase Storage.
+  ///
+  /// Takes raw bytes (via `putData`) so it works on web as well as mobile.
+  Future<String> uploadCover(Uint8List coverBytes) async {
     try {
       final ref = _storage.ref().child('ebooks/covers/${DateTime.now().millisecondsSinceEpoch}.jpg');
-      await ref.putFile(coverImage);
+      await ref.putData(coverBytes, SettableMetadata(contentType: 'image/jpeg'));
       return await ref.getDownloadURL();
     } catch (e) {
       throw Exception('Error uploading cover image: $e');
@@ -19,10 +21,10 @@ class EbookRepository {
   }
 
   /// Upload ebook file to Firebase Storage
-  Future<String> uploadEbook(File ebookFile) async {
+  Future<String> uploadEbook(Uint8List ebookBytes) async {
     try {
       final ref = _storage.ref().child('ebooks/files/${DateTime.now().millisecondsSinceEpoch}.pdf');
-      await ref.putFile(ebookFile);
+      await ref.putData(ebookBytes, SettableMetadata(contentType: 'application/pdf'));
       return await ref.getDownloadURL();
     } catch (e) {
       throw Exception('Error uploading ebook file: $e');
