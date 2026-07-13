@@ -164,7 +164,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                      child: const Text("Approve"),
+                      child: const Text("Approve", style: TextStyle(color: Colors.white)),
                     ),
                     ElevatedButton(
                       onPressed: () {
@@ -172,7 +172,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      child: const Text("Reject"),
+                      child: const Text("Reject", style: TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),

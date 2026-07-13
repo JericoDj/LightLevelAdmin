@@ -70,13 +70,11 @@ class _SupportScreenState extends State<SupportScreen> {
   // ✅ Build Support Sections
   Widget _buildSupportSection(String title, String status, Color headerColor) {
     return Expanded(
-      child: SizedBox(
-        height: 320,
-        child: Card(
-          elevation: 2,
-          margin: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Card(
+        elevation: 2,
+        margin: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
@@ -116,7 +114,6 @@ class _SupportScreenState extends State<SupportScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -187,12 +184,12 @@ class _SupportScreenState extends State<SupportScreen> {
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
           onPressed: () => controller.openSupportSession(context, userId),
-          child: const Text("Open"),
+          child: const Text("Open", style: TextStyle(color: Colors.white)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
           onPressed: () => _showStatusDialog(context, userId),
-          child: const Text("Change Status"),
+          child: const Text("Change Status", style: TextStyle(color: Colors.white)),
         ),
       ];
     } else if (status == "finished") {
@@ -234,12 +231,14 @@ class _SupportScreenState extends State<SupportScreen> {
         children: [
           const SizedBox(height: 12),
           const Text("Support Sessions", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          Row(
-            children: [
-              _buildSupportSection("Waiting", "waiting", Colors.blueAccent),
-              _buildSupportSection("Ongoing", "ongoing", Colors.green),
-              _buildSupportSection("Finished", "finished", Colors.orange),
-            ],
+          Expanded(
+            child: Row(
+              children: [
+                _buildSupportSection("Waiting", "waiting", Colors.blueAccent),
+                _buildSupportSection("Ongoing", "ongoing", Colors.green),
+                _buildSupportSection("Finished", "finished", Colors.orange),
+              ],
+            ),
           ),
         ],
       ),

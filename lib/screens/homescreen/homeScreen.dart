@@ -130,10 +130,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   // _buildDashboardCard("📊 Average Mood", "Neutral (3.5/5)", Colors.blueAccent),
                   // _buildDashboardCard("⚡ Average Stress Level", "Moderate (2.8/5)", Colors.orangeAccent),
-                  _buildDashboardCard("📅 Safe Space Queue Sessions",
-                      "$_safeSpaceQueueCount Sessions", MyColors.color2),
                   _buildDashboardCard("🕒 24/7 Safe Space Queue",
-                      "$_safeSpace247QueueCount Users", MyColors.color2),
+                      "$_safeSpaceQueueCount Users", MyColors.color2),
+                  _buildDashboardCard("📅 Safe Space Queue Sessions",
+                      "$_safeSpace247QueueCount Sessions", MyColors.color2),
                   _buildDashboardCard("📞 Customer Support Queue",
                       "$_supportTicketCount Tickets", MyColors.color2),
                   _buildDashboardCard("🌍 Community Queue Posts",

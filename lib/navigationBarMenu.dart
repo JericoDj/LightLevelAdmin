@@ -45,13 +45,16 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
   int bookingRequestedCount = 0;
   int openTicketsCount = 0;
   int pendingPostsCount = 0;
+  int supportWaitingCount = 0;
   StreamSubscription<QuerySnapshot>? _bookingSub;
   StreamSubscription<QuerySnapshot>? _ticketsSub;
   StreamSubscription<QuerySnapshot>? _postsSub;
+  StreamSubscription<QuerySnapshot>? _supportSub;
   // Skip the sound/snackbar burst on each listener's first snapshot
   bool _bookingInit = false;
   bool _ticketsInit = false;
   bool _postsInit = false;
+  bool _supportInit = false;
 
   // Floating Overlay State Variables
   bool _isMinimized = false;
@@ -97,20 +100,17 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
   void _startGlobalBadgeListeners() {
     // 📅 Bookings → REQUESTED
-    _bookingSub = _firestore.collection('bookings').snapshots().listen((snapshot) {
+    _bookingSub = _firestore.collection('bookings').where('status', isEqualTo: 'Requested').snapshots().listen((snapshot) {
       if (!mounted) return;
-      bool matches(Map<String, dynamic> d) =>
-          (d['status']?.toString().toLowerCase() ?? 'requested') == 'requested';
 
       setState(() {
-        bookingRequestedCount =
-            snapshot.docs.where((doc) => matches(doc.data())).length;
+        bookingRequestedCount = snapshot.docs.length;
       });
 
       if (_bookingInit) {
         _notifyNewItems(
           snapshot: snapshot,
-          matches: matches,
+          matches: (_) => true,
           buildMessage: (d) =>
               'New Booking Request from ${d['clientName'] ?? 'a client'}',
           route: '/navigation/bookings',
@@ -120,7 +120,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     });
 
     // 🎫 Tickets → OPEN / IN PROGRESS
-    _ticketsSub = _firestore.collection('tickets').snapshots().listen((snapshot) {
+    _ticketsSub = _firestore.collectionGroup('tickets').snapshots().listen((snapshot) {
       if (!mounted) return;
       bool matches(Map<String, dynamic> d) {
         final s = d['status']?.toString().toLowerCase();
@@ -145,14 +145,11 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     });
 
     // 💬 Community Posts → PENDING
-    _postsSub = _firestore.collection('posts').snapshots().listen((snapshot) {
+    _postsSub = _firestore.collection('safeSpace').doc('posts').collection('userPosts').where('status', isEqualTo: 'pending').snapshots().listen((snapshot) {
       if (!mounted) return;
-      bool matches(Map<String, dynamic> d) =>
-          (d['status']?.toString().toLowerCase() ?? 'pending') == 'pending';
 
       setState(() {
-        pendingPostsCount =
-            snapshot.docs.where((doc) => matches(doc.data())).length;
+        pendingPostsCount = snapshot.docs.length;
       });
 
       if (_postsInit) {
@@ -166,6 +163,26 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       }
       _postsInit = true;
     });
+
+    // 🎧 Support → WAITING
+    _supportSub = _firestore.collection('customer_support/voice/sessions').where('status', isEqualTo: 'waiting').snapshots().listen((snapshot) {
+      if (!mounted) return;
+
+      setState(() {
+        supportWaitingCount = snapshot.docs.length;
+      });
+
+      if (_supportInit) {
+        _notifyNewItems(
+          snapshot: snapshot,
+          matches: (_) => true,
+          buildMessage: (d) =>
+              'New Support Request from ${d['fullName'] ?? d['userId'] ?? 'a client'}',
+          route: '/navigation/support',
+        );
+      }
+      _supportInit = true;
+    });
   }
 
   /// Plays a sound + shows a snackbar for each newly-added doc that matches.
@@ -178,47 +195,15 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     // 🔒 GUARD: Don't show or sound if not logged in
     if (FirebaseAuth.instance.currentUser == null) return;
 
-    for (var change in snapshot.docChanges) {
-      if (change.type != DocumentChangeType.added) continue;
+    try {
+      for (var change in snapshot.docChanges) {
+        if (change.type != DocumentChangeType.added) continue;
 
-      final data = change.doc.data() as Map<String, dynamic>?;
-      if (data == null || !matches(data)) continue;
-
-      _playSound();
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.notifications_active, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(child: Text(buildMessage(data))),
-              TextButton(
-                onPressed: () => context.go(route),
-                child: const Text('VIEW', style: TextStyle(color: Colors.yellow)),
-              ),
-            ],
-          ),
-          backgroundColor: MyColors.color1,
-          duration: const Duration(seconds: 5),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  void _showIncomingSessionNotification(String type, QuerySnapshot snapshot) {
-    // 🔒 GUARD: Don't show or sound if not logged in
-    if (FirebaseAuth.instance.currentUser == null) return;
-
-    // Only show if a NEW document was added
-    for (var change in snapshot.docChanges) {
-      if (change.type == DocumentChangeType.added) {
         final data = change.doc.data() as Map<String, dynamic>?;
-        final name = data?['fullName'] ?? 'Someone';
-        
+        if (data == null || !matches(data)) continue;
+
         _playSound();
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -226,9 +211,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
               children: [
                 const Icon(Icons.notifications_active, color: Colors.white),
                 const SizedBox(width: 10),
-                Expanded(child: Text('New $type Session Request from $name')),
+                Expanded(child: Text(buildMessage(data))),
                 TextButton(
-                  onPressed: () => context.go('/navigation/sessions'),
+                  onPressed: () => context.go(route),
                   child: const Text('VIEW', style: TextStyle(color: Colors.yellow)),
                 ),
               ],
@@ -239,6 +224,49 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           ),
         );
       }
+    } catch (e) {
+      debugPrint('Warning: Could not process docChanges due to error: $e');
+      // If docChanges fails, we can't easily tell which specific doc was added.
+      // We will skip the specific snackbar but the badge count is already updated.
+    }
+
+  }
+
+  void _showIncomingSessionNotification(String type, QuerySnapshot snapshot) {
+    // 🔒 GUARD: Don't show or sound if not logged in
+    if (FirebaseAuth.instance.currentUser == null) return;
+
+    // Only show if a NEW document was added
+    try {
+      for (var change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.added) {
+          final data = change.doc.data() as Map<String, dynamic>?;
+          final name = data?['fullName'] ?? 'Someone';
+          
+          _playSound();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.notifications_active, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text('New $type Session Request from $name')),
+                  TextButton(
+                    onPressed: () => context.go('/navigation/sessions'),
+                    child: const Text('VIEW', style: TextStyle(color: Colors.yellow)),
+                  ),
+                ],
+              ),
+              backgroundColor: MyColors.color1,
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Warning: Could not process docChanges due to error: $e');
     }
   }
 
@@ -249,6 +277,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     _bookingSub?.cancel();
     _ticketsSub?.cancel();
     _postsSub?.cancel();
+    _supportSub?.cancel();
     _audioPlayer.dispose(); // ✅ Cleanup
     super.dispose();
   }
@@ -707,6 +736,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                     child: TextField(
                       controller: chatMsgController,
                       style: const TextStyle(fontSize: 13),
+                      minLines: 1,
+                      maxLines: 4,
+                      keyboardType: TextInputType.multiline,
                       decoration: InputDecoration(
                         hintText: "Type a message...",
                         isDense: true,
@@ -951,7 +983,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
               '/navigation/dataanalytics'),
           _buildSidebarItem(context, Icons.notifications_none_outlined, 'Notifications', '/navigation/notifications'),
           _buildSidebarItem(
-              context, Icons.support_agent_outlined, 'Support', '/navigation/support'),
+              context, Icons.support_agent_outlined, 'Support', '/navigation/support',
+              badgeCount: supportWaitingCount),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
@@ -978,7 +1011,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
               '/navigation/dataanalytics'),
           _buildSidebarItem(context, Icons.notifications_none_outlined, 'Notifications', '/navigation/notifications'),
           _buildSidebarItem(
-              context, Icons.support_agent_outlined, 'Support', '/navigation/support'),
+              context, Icons.support_agent_outlined, 'Support', '/navigation/support',
+              badgeCount: supportWaitingCount),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];

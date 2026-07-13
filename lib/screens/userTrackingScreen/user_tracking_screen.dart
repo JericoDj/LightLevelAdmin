@@ -16,6 +16,14 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
   String? selectedCompanyId;
   String? selectedCompanyName;
   String? selectedUserName;
+  // The dropdown is keyed by email (unique) instead of name, because two users
+  // can share the same display name and DropdownButton requires unique values.
+  String? selectedUserEmail;
+  // The exact fullName the app used when writing to user_tracking. The dropdown
+  // label (selectedUserName) comes from companies/{id}/users.name, which can
+  // differ from the app's users/{uid}.fullName. We resolve the real one by email
+  // and use it for all user_tracking paths so the logs are actually found.
+  String? trackingUserName;
   DateTime selectedDate = DateTime.now();
 
   List<Map<String, dynamic>> companies = [];
@@ -59,6 +67,8 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
       selectedCompanyId = companyId;
       selectedCompanyName = companies.firstWhere((c) => c['id'] == companyId)['name'];
       selectedUserName = null;
+      selectedUserEmail = null;
+      trackingUserName = null;
       users = [];
       trackingLogs = [];
       availableDates = [];
@@ -67,20 +77,30 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
 
     try {
       final snapshot = await _firestore
-          .collection('companies')
-          .doc(companyId)
           .collection('users')
+          .where('companyId', isEqualTo: companyId)
           .get();
 
       setState(() {
-        users = snapshot.docs.map((doc) {
+        // Dedupe by email so the dropdown never has two items with the same
+        // value (DropdownButton asserts on duplicate values). Users without an
+        // email get a synthetic key from their doc id so they still appear.
+        final Map<String, Map<String, dynamic>> byEmail = {};
+        for (final doc in snapshot.docs) {
           final data = doc.data();
-          return {
-            'id': doc.id,
-            'name': data['name'] ?? 'Unknown User',
-            'email': data['email'] ?? '',
-          };
-        }).toList();
+          final email = (data['email'] ?? '').toString();
+          final key = email.isNotEmpty ? email : 'no-email:${doc.id}';
+          byEmail.putIfAbsent(
+            key,
+            () => {
+              'id': doc.id,
+              'name': data['fullName'] ?? data['name'] ?? 'Unknown User',
+              'email': email,
+              'key': key,
+            },
+          );
+        }
+        users = byEmail.values.toList();
         isLoadingUsers = false;
       });
     } catch (e) {
@@ -89,8 +109,18 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
     }
   }
 
-  Future<void> _fetchAvailableDates(String userName) async {
+  // [userKey] is the dropdown value — the user's email (or a synthetic
+  // 'no-email:{docId}' key for users without an email).
+  Future<void> _fetchAvailableDates(String userKey) async {
+    final user = users.firstWhere(
+      (u) => u['key'] == userKey,
+      orElse: () => <String, dynamic>{},
+    );
+    final userName = (user['name'] ?? userKey).toString();
+    final email = (user['email'] ?? '').toString();
+
     setState(() {
+      selectedUserEmail = userKey;
       selectedUserName = userName;
       isLoadingDates = true;
       availableDates = [];
@@ -99,12 +129,35 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
 
     if (selectedCompanyId == null) return;
 
+    // Resolve the exact fullName the app used for the user_tracking path.
+    // The dropdown name (companies/{id}/users.name) may differ from the app's
+    // users/{uid}.fullName, so look it up by the user's email and fall back to
+    // the dropdown name if no match is found.
+    trackingUserName = userName;
+    try {
+      if (email.isNotEmpty) {
+        final userQuery = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get();
+        if (userQuery.docs.isNotEmpty) {
+          final resolved = userQuery.docs.first.data()['fullName'];
+          if (resolved is String && resolved.isNotEmpty) {
+            trackingUserName = resolved;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Could not resolve tracking fullName by email: $e");
+    }
+
     try {
       // Fetch everything under this user to discover dates
       final snapshot = await _firestore
           .collection('user_tracking')
           .doc(selectedCompanyId)
-          .collection(userName)
+          .collection(trackingUserName!)
           .get();
 
       Set<String> dateSet = {};
@@ -151,7 +204,7 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
       selectedDate = DateTime.parse(dateStr);
     });
 
-    if (selectedCompanyId == null || selectedUserName == null) return;
+    if (selectedCompanyId == null || trackingUserName == null) return;
 
     try {
       List<Map<String, dynamic>> combinedLogs = [];
@@ -160,19 +213,19 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
       final newSnapshot = await _firestore
           .collection('user_tracking')
           .doc(selectedCompanyId)
-          .collection(selectedUserName!)
+          .collection(trackingUserName!)
           .doc(dateStr)
           .collection('logs')
           .orderBy('timestamp', descending: true)
           .get();
-      
+
       combinedLogs.addAll(newSnapshot.docs.map((doc) => doc.data()));
 
       // 2. Fetch OLD flat logs (filtered by date)
       final oldSnapshot = await _firestore
           .collection('user_tracking')
           .doc(selectedCompanyId)
-          .collection(selectedUserName!)
+          .collection(trackingUserName!)
           .get();
 
       final oldFilteredLogs = oldSnapshot.docs
@@ -448,11 +501,16 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
         labelText: "Select User",
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      value: selectedUserName,
+      value: selectedUserEmail,
+      isExpanded: true,
       items: users.map((user) {
+        final email = (user['email'] ?? '').toString();
+        final label = email.isNotEmpty
+            ? "${user['name']} ($email)"
+            : "${user['name']}";
         return DropdownMenuItem<String>(
-          value: user['name'],
-          child: Text("${user['name']} (${user['email']})"),
+          value: user['key'],
+          child: Text(label, overflow: TextOverflow.ellipsis),
         );
       }).toList(),
       onChanged: (value) {

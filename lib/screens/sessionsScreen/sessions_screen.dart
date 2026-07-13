@@ -102,9 +102,24 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
                     var filteredDocs = snapshot.data!.docs.where((doc) {
                       var docData = doc.data() as Map<String, dynamic>;
+
+                      // Check for missed session logic
+                      if (status == "queue" && docData["status"] == "queue") {
+                        Timestamp? lastPolled = docData['lastPolled'];
+                        if (lastPolled != null) {
+                          if (DateTime.now().difference(lastPolled.toDate()).inSeconds > 60) {
+                            // Automatically move to missed
+                            doc.reference.update({"status": "missed"}).catchError((e) {
+                              debugPrint("Error updating missed status: $e");
+                            });
+                            return false;
+                          }
+                        }
+                      }
+
                       Timestamp? t = docData['timestamp'];
                       if (t == null) return false;
-                      if (status == "on_hold") return true; // Show all on-hold sessions, not just today
+                      if (status == "on_hold" || status == "missed") return true; // Show all on-hold and missed sessions, not just today
                       DateTime now = DateTime.now();
                       DateTime d = t.toDate();
                       return d.year == now.year && d.month == now.month && d.day == now.day;
@@ -322,6 +337,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 _buildConsultationSection(
                     "Finished", "finished", "Chat", Colors.orange),
                 _buildConsultationSection(
+                    "Missed", "missed", "Chat", Colors.purple),
+                _buildConsultationSection(
                     "Cancelled", "cancelled", "Chat", Colors.red),
               ],
             ),
@@ -335,9 +352,9 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 _buildConsultationSection(
                     "Ongoing", "ongoing", "Talk", Colors.green),
                 _buildConsultationSection(
-                    "On Hold", "on_hold", "Talk", Colors.amber),
-                _buildConsultationSection(
                     "Finished", "finished", "Talk", Colors.orange),
+                _buildConsultationSection(
+                    "Missed", "missed", "Talk", Colors.purple),
                 _buildConsultationSection(
                     "Cancelled", "cancelled", "Talk", Colors.red),
               ],

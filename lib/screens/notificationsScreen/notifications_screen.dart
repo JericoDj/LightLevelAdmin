@@ -162,6 +162,7 @@ class NotificationsScreen extends StatelessWidget {
       selected: selected,
       onSelected: (_) => controller.target.value = value,
       selectedColor: MyColors.color1,
+      checkmarkColor: Colors.white,
       labelStyle: TextStyle(
         color: selected ? Colors.white : Colors.black87,
         fontWeight: FontWeight.w600,
