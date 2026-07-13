@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lightlevelpsychosolutionsadmin/utils/colors.dart';
@@ -467,7 +468,12 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
         labelText: "Select Company",
+        labelStyle: const TextStyle(color: MyColors.color1),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: MyColors.color1, width: 2),
+        ),
       ),
       value: selectedCompanyId,
       items: companies.map((company) {
@@ -487,7 +493,12 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
       return DropdownButtonFormField<String>(
         decoration: InputDecoration(
           labelText: "Select User",
+          labelStyle: const TextStyle(color: MyColors.color1),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: MyColors.color1, width: 2),
+          ),
         ),
         items: const [],
         onChanged: null,
@@ -499,7 +510,12 @@ class _UserTrackingScreenState extends State<UserTrackingScreen> {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
         labelText: "Select User",
+        labelStyle: const TextStyle(color: MyColors.color1),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: MyColors.color1, width: 2),
+        ),
       ),
       value: selectedUserEmail,
       isExpanded: true,
