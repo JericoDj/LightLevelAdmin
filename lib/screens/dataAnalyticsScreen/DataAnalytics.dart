@@ -16,12 +16,13 @@ import '../../controllers/data_analytics_controllers/data_analytics_controller.d
 import 'BookingSessionsReportWidget.dart';
 import 'CallReportWidget.dart';
 import 'ChatReportWidget.dart';
+import 'MissedReportWidget.dart';
 import 'MoodReportWidget.dart';
 import 'StressReportWidget.dart';
 import 'UserSelectionDialog.dart';
 import 'dart:html' as html;
 
-enum ReportType { mood, stress, booking, call, chat, all }
+enum ReportType { mood, stress, booking, call, chat, missed, all }
 
 class DataAnalyticsReportScreen extends StatefulWidget {
 
@@ -366,6 +367,7 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
 
                     await controller.generateCallOnly(range.start, range.end);
                     await controller.generateChatOnly(range.start, range.end);
+                    await controller.generateMissedOnly(range.start, range.end);
 
                     setState(() => currentReportType = ReportType.all);
                   },
@@ -418,6 +420,13 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
                   onTap: () async {
                     await controller.generateChatOnly(range.start, range.end);
                     setState(() => currentReportType = ReportType.chat);
+                  },
+                ),
+                _buildActionButton(
+                  label: 'Generate Missed Sessions',
+                  onTap: () async {
+                    await controller.generateMissedOnly(range.start, range.end);
+                    setState(() => currentReportType = ReportType.missed);
                   },
                 ),
               ],
@@ -477,6 +486,14 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
                     );
                   }
 
+                  if (currentReportType == ReportType.missed && controller.missedReport != null) {
+                    return MissedReportWidget(
+                      data: controller.missedReport!,
+                      company: controller.selectedCompany ?? 'Unknown',
+                      selectedUsers: controller.selectedUsers,
+                    );
+                  }
+
                   if (currentReportType == ReportType.all) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -516,6 +533,13 @@ class _DataAnalyticsReportScreenState extends State<DataAnalyticsReportScreen> {
                         if (controller.chatReport != null)
                           ChatReportWidget(
                             data: controller.chatReport!,
+                            company: controller.selectedCompany ?? 'Unknown',
+                            selectedUsers: controller.selectedUsers,
+                          ),
+                        const SizedBox(height: 20),
+                        if (controller.missedReport != null)
+                          MissedReportWidget(
+                            data: controller.missedReport!,
                             company: controller.selectedCompany ?? 'Unknown',
                             selectedUsers: controller.selectedUsers,
                           ),

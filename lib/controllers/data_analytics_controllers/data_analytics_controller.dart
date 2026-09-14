@@ -5,6 +5,7 @@ import 'call_controller.dart';
 import 'chat_controller.dart';
 import 'mood_controller.dart';
 import 'stress_controller.dart';
+import 'missed_controller.dart';
 
 class DataAnalyticsController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -21,6 +22,7 @@ class DataAnalyticsController {
   Map<String, dynamic>? bookingReport;
   List<Map<String, dynamic>>? callReport;
   List<Map<String, dynamic>>? chatReport;
+  List<Map<String, dynamic>>? missedReport;
 
 
   final StressController stressController = StressController();
@@ -28,6 +30,7 @@ class DataAnalyticsController {
   final BookingSessionsController bookingSessionsController = BookingSessionsController();
   final CallController callController = CallController();
   final ChatController chatController = ChatController();
+  final MissedController missedController = MissedController();
 
 
   void setDateRange(DateTime start, DateTime end) {
@@ -139,6 +142,18 @@ class DataAnalyticsController {
     if (selectedCompany == null || selectedUsers.isEmpty) return;
 
     chatReport = await chatController.generateChatReport(
+      companyId: selectedCompany!,
+      users: selectedUsers,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  /// ❌ Generate only Missed Report
+  Future<void> generateMissedOnly(DateTime? startDate, DateTime? endDate) async {
+    if (selectedCompany == null || selectedUsers.isEmpty) return;
+
+    missedReport = await missedController.generateMissedReport(
       companyId: selectedCompany!,
       users: selectedUsers,
       startDate: startDate,

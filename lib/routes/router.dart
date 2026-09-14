@@ -39,12 +39,11 @@ import '../screens/userManagementScreen/user_management_screen.dart';
 import '../screens/userTrackingScreen/user_tracking_screen.dart';
 import '../navigationBarMenu.dart';
 import '../screens/notificationsScreen/notifications_screen.dart';
+import '../screens/adminChat/admin_chat_screen.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter router = GoRouter(
-
-
   initialLocation: '/login',
   navigatorKey: rootNavigatorKey,
   redirect: (context, state) {
@@ -98,9 +97,6 @@ final GoRouter router = GoRouter(
       },
     ),
 
-
-
-
     // ✅ New Support Call Route
     GoRoute(
       path: '/navigation/chat/:userId/:fullName/:companyId',
@@ -108,7 +104,8 @@ final GoRouter router = GoRouter(
         final String userId = state.pathParameters['userId'] ?? "";
         final String fullName = state.pathParameters['fullName'] ?? "";
         final String companyId = state.pathParameters['companyId'] ?? "";
-        return ChatScreen(userId: userId ,fullName: fullName, companyId: companyId);
+        return ChatScreen(
+            userId: userId, fullName: fullName, companyId: companyId);
       },
     ),
 
@@ -119,7 +116,8 @@ final GoRouter router = GoRouter(
         final String userId = state.pathParameters['userId'] ?? "";
         final String fullName = state.pathParameters['fullName'] ?? "";
         final String companyId = state.pathParameters['companyId'] ?? "";
-        return ChatScreen(userId: userId ,fullName: fullName, companyId: companyId);
+        return ChatScreen(
+            userId: userId, fullName: fullName, companyId: companyId);
       },
     ),
 
@@ -129,18 +127,42 @@ final GoRouter router = GoRouter(
         return NavigationBarMenuScreen(child: child);
       },
       routes: [
-        GoRoute(path: '/navigation/home', builder: (context, state) => HomeScreen()),
-        GoRoute(path: '/navigation/contents', builder: (context, state) => ContentsScreen()),
-        GoRoute(path: '/navigation/sessions', builder: (context, state) => SessionsScreen()),
-        GoRoute(path: '/navigation/support', builder: (context, state) => SupportScreen()),
-        GoRoute(path: '/navigation/bookings', builder: (context, state) => BookingsScreen()),
+        GoRoute(
+            path: '/navigation/home',
+            builder: (context, state) => HomeScreen()),
+        GoRoute(
+            path: '/navigation/contents',
+            builder: (context, state) => ContentsScreen()),
+        GoRoute(
+            path: '/navigation/sessions',
+            builder: (context, state) => SessionsScreen()),
+        GoRoute(
+            path: '/navigation/support',
+            builder: (context, state) => SupportScreen()),
+        GoRoute(
+            path: '/navigation/user-chats',
+            builder: (context, state) => const AdminChatManagementScreen()),
+        GoRoute(
+            path: '/navigation/bookings',
+            builder: (context, state) => BookingsScreen()),
 
-        GoRoute(path: '/navigation/test', builder: (context, state) => TestApp()),
-        GoRoute(path: '/navigation/tickets', builder: (context, state) => TicketsScreen()),
-        GoRoute(path: '/navigation/user-management', builder: (context, state) => UserManagementScreen()),
-        GoRoute(path: '/navigation/user-tracking', builder: (context, state) => const UserTrackingScreen()),
-        GoRoute(path: '/navigation/notifications', builder: (context, state) => NotificationsScreen()),
-        GoRoute(path: '/navigation/community', builder: (context, state) => CommunityScreen()),
+        GoRoute(
+            path: '/navigation/test', builder: (context, state) => TestApp()),
+        GoRoute(
+            path: '/navigation/tickets',
+            builder: (context, state) => TicketsScreen()),
+        GoRoute(
+            path: '/navigation/user-management',
+            builder: (context, state) => UserManagementScreen()),
+        GoRoute(
+            path: '/navigation/user-tracking',
+            builder: (context, state) => const UserTrackingScreen()),
+        GoRoute(
+            path: '/navigation/notifications',
+            builder: (context, state) => NotificationsScreen()),
+        GoRoute(
+            path: '/navigation/community',
+            builder: (context, state) => CommunityScreen()),
         GoRoute(
           path: '/navigation/dataanalytics',
           builder: (context, state) => DataAnalyticsReportScreen(),
@@ -152,16 +174,25 @@ final GoRouter router = GoRouter(
           builder: (context, state) => const ReportsScreen(),
         ),
 
-        GoRoute(path: '/navigation/reports/sessions-chats', builder: (context, state) => const SessionsChatReportScreen()),
-        GoRoute(path: '/navigation/reports/session-calls', builder: (context, state) => const SessionCallsReportScreen()),
-        GoRoute(path: '/navigation/reports/bookings-online', builder: (context, state) => const BookingsOnlineReportScreen()),
-        GoRoute(path: '/navigation/reports/bookings-face-to-face', builder: (context, state) => const BookingsFaceToFaceReportScreen()),
-        GoRoute(path: '/navigation/reports/tickets', builder: (context, state) => const TicketsReportScreen()),
-        GoRoute(path: '/navigation/reports/community-posts', builder: (context, state) => const CommunityPostsReportScreen()),
-
-
-
-
+        GoRoute(
+            path: '/navigation/reports/sessions-chats',
+            builder: (context, state) => const SessionsChatReportScreen()),
+        GoRoute(
+            path: '/navigation/reports/session-calls',
+            builder: (context, state) => const SessionCallsReportScreen()),
+        GoRoute(
+            path: '/navigation/reports/bookings-online',
+            builder: (context, state) => const BookingsOnlineReportScreen()),
+        GoRoute(
+            path: '/navigation/reports/bookings-face-to-face',
+            builder: (context, state) =>
+                const BookingsFaceToFaceReportScreen()),
+        GoRoute(
+            path: '/navigation/reports/tickets',
+            builder: (context, state) => const TicketsReportScreen()),
+        GoRoute(
+            path: '/navigation/reports/community-posts',
+            builder: (context, state) => const CommunityPostsReportScreen()),
 
         GoRoute(
           path: '/navigation/contents/homepage',
@@ -169,7 +200,11 @@ final GoRouter router = GoRouter(
         ),
         GoRoute(
           path: '/navigation/contents/mindhub',
-          builder: (context, state) => const MindHubContentScreen(articles: [], videos: [], ebooks: [],),
+          builder: (context, state) => const MindHubContentScreen(
+            articles: [],
+            videos: [],
+            ebooks: [],
+          ),
         ),
         GoRoute(
           path: '/navigation/contents/insightquest',
@@ -184,15 +219,22 @@ final GoRouter router = GoRouter(
         GoRoute(
           path: '/mindhub-content',
           builder: (context, state) {
-            final articles = state.extra as List<Article>; // Receive the articles list
-            return MindHubContentScreen(articles: articles, videos: [], ebooks: [],); // Pass it to the MindHubContentScreen
+            final articles =
+                state.extra as List<Article>; // Receive the articles list
+            return MindHubContentScreen(
+              articles: articles,
+              videos: [],
+              ebooks: [],
+            ); // Pass it to the MindHubContentScreen
           },
         ),
         GoRoute(
           path: '/articles-content',
           builder: (context, state) {
-            final articles = state.extra as List<Article>; // Receive the articles list
-            return ArticlesContentScreen(articles: articles); // Pass it to the ArticlesContentScreen
+            final articles =
+                state.extra as List<Article>; // Receive the articles list
+            return ArticlesContentScreen(
+                articles: articles); // Pass it to the ArticlesContentScreen
           },
         ),
         GoRoute(
@@ -212,9 +254,6 @@ final GoRouter router = GoRouter(
             return EbooksContentScreen(ebooks: ebooks);
           },
         ),
-
-
-
       ],
     ),
   ],

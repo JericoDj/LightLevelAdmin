@@ -159,6 +159,15 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           Text('Company ID: ${booking['company_id']}'),
                           const SizedBox(height: 4),
                           Text(
+                            '${isFinished || booking['status'].toString().toLowerCase() == 'scheduled' ? 'Scheduled' : 'Requested'} Date: ${_formatBookingDate(booking['date_requested'])}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            'Time: ${(booking['time']?.toString().trim().isNotEmpty ?? false) ? booking['time'] : 'Not set'}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
                             'Specialist: ${booking['specialist'] ?? "Not Assigned"}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
@@ -578,6 +587,24 @@ class _BookingsScreenState extends State<BookingsScreen> {
         );
       },
     );
+  }
+
+  /// Presents the stored booking date consistently. Handles ISO strings
+  /// (e.g. 2025-09-20) and the app's "Fri, Jan 30" style; leaves anything else
+  /// as-is so nothing is lost.
+  String _formatBookingDate(dynamic raw) {
+    final value = raw?.toString().trim() ?? '';
+    if (value.isEmpty) return 'Not set';
+    try {
+      final date = DateTime.parse(value); // ISO like 2025-09-20
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    } catch (_) {
+      return value; // Already human-readable (e.g. "Fri, Jan 30")
+    }
   }
 
   Widget _buildStatusTag(String status) {

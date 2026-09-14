@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../routes/router.dart';
 import '../../controllers/session_controller.dart';
@@ -180,9 +181,52 @@ class _SessionsScreenState extends State<SessionsScreen> {
     return null;
   }
 
+  void _showMissedDetailsDialog(BuildContext context, Map<String, dynamic> data) {
+    Timestamp? reqTime = data['timestamp'];
+    String requestedTimeStr = reqTime != null 
+        ? DateFormat('MMM dd, yyyy - hh:mm a').format(reqTime.toDate()) 
+        : "Unknown";
+
+    Timestamp? lastPolled = data['lastPolled'];
+    String waitTimeStr = "Unknown";
+    if (reqTime != null && lastPolled != null) {
+      final diff = lastPolled.toDate().difference(reqTime.toDate());
+      final minutes = diff.inMinutes;
+      final seconds = diff.inSeconds % 60;
+      waitTimeStr = "$minutes min $seconds sec";
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Missed Session Details"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("User: ${data['fullName'] ?? data['userId'] ?? 'Unknown'}"),
+              Text("Company: ${data['companyId'] ?? 'Unknown'}"),
+              Text("Session Type: ${data['sessionType'] ?? 'Unknown'}"),
+              const SizedBox(height: 10),
+              Text("Requested: $requestedTimeStr", style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text("Wait Time: $waitTimeStr", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildSessionCard(
       BuildContext context, String status, Map<String, dynamic> data) {
-    return Container(
+    Widget card = Container(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -247,6 +291,15 @@ class _SessionsScreenState extends State<SessionsScreen> {
         ],
       ),
     );
+
+    if (status == "missed") {
+      return InkWell(
+        onTap: () => _showMissedDetailsDialog(context, data),
+        child: card,
+      );
+    }
+    
+    return card;
   }
 
 

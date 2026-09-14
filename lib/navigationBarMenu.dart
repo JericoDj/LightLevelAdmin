@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart'; // ✅ Added for sound
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
@@ -46,10 +45,12 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
   int openTicketsCount = 0;
   int pendingPostsCount = 0;
   int supportWaitingCount = 0;
+  int userChatUnreadCount = 0;
   StreamSubscription<QuerySnapshot>? _bookingSub;
   StreamSubscription<QuerySnapshot>? _ticketsSub;
   StreamSubscription<QuerySnapshot>? _postsSub;
   StreamSubscription<QuerySnapshot>? _supportSub;
+  StreamSubscription<QuerySnapshot>? _userChatsSub;
   // Skip the sound/snackbar burst on each listener's first snapshot
   bool _bookingInit = false;
   bool _ticketsInit = false;
@@ -99,8 +100,22 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
   }
 
   void _startGlobalBadgeListeners() {
+    _userChatsSub =
+        _firestore.collection('admin_chats').snapshots().listen((snapshot) {
+      if (!mounted) return;
+      setState(() {
+        userChatUnreadCount = snapshot.docs.fold<int>(0, (total, doc) {
+          final data = doc.data();
+          return total + ((data['unreadForAdmin'] as num?)?.toInt() ?? 0);
+        });
+      });
+    });
     // 📅 Bookings → REQUESTED
-    _bookingSub = _firestore.collection('bookings').where('status', isEqualTo: 'Requested').snapshots().listen((snapshot) {
+    _bookingSub = _firestore
+        .collection('bookings')
+        .where('status', isEqualTo: 'Requested')
+        .snapshots()
+        .listen((snapshot) {
       if (!mounted) return;
 
       setState(() {
@@ -120,7 +135,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     });
 
     // 🎫 Tickets → OPEN / IN PROGRESS
-    _ticketsSub = _firestore.collectionGroup('tickets').snapshots().listen((snapshot) {
+    _ticketsSub =
+        _firestore.collectionGroup('tickets').snapshots().listen((snapshot) {
       if (!mounted) return;
       bool matches(Map<String, dynamic> d) {
         final s = d['status']?.toString().toLowerCase();
@@ -145,7 +161,13 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     });
 
     // 💬 Community Posts → PENDING
-    _postsSub = _firestore.collection('safeSpace').doc('posts').collection('userPosts').where('status', isEqualTo: 'pending').snapshots().listen((snapshot) {
+    _postsSub = _firestore
+        .collection('safeSpace')
+        .doc('posts')
+        .collection('userPosts')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) {
       if (!mounted) return;
 
       setState(() {
@@ -165,7 +187,11 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     });
 
     // 🎧 Support → WAITING
-    _supportSub = _firestore.collection('customer_support/voice/sessions').where('status', isEqualTo: 'waiting').snapshots().listen((snapshot) {
+    _supportSub = _firestore
+        .collection('customer_support/voice/sessions')
+        .where('status', isEqualTo: 'waiting')
+        .snapshots()
+        .listen((snapshot) {
       if (!mounted) return;
 
       setState(() {
@@ -214,7 +240,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                 Expanded(child: Text(buildMessage(data))),
                 TextButton(
                   onPressed: () => context.go(route),
-                  child: const Text('VIEW', style: TextStyle(color: Colors.yellow)),
+                  child: const Text('VIEW',
+                      style: TextStyle(color: Colors.yellow)),
                 ),
               ],
             ),
@@ -229,7 +256,6 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       // If docChanges fails, we can't easily tell which specific doc was added.
       // We will skip the specific snackbar but the badge count is already updated.
     }
-
   }
 
   void _showIncomingSessionNotification(String type, QuerySnapshot snapshot) {
@@ -242,7 +268,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         if (change.type == DocumentChangeType.added) {
           final data = change.doc.data() as Map<String, dynamic>?;
           final name = data?['fullName'] ?? 'Someone';
-          
+
           _playSound();
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -254,7 +280,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                   Expanded(child: Text('New $type Session Request from $name')),
                   TextButton(
                     onPressed: () => context.go('/navigation/sessions'),
-                    child: const Text('VIEW', style: TextStyle(color: Colors.yellow)),
+                    child: const Text('VIEW',
+                        style: TextStyle(color: Colors.yellow)),
                   ),
                 ],
               ),
@@ -278,6 +305,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     _ticketsSub?.cancel();
     _postsSub?.cancel();
     _supportSub?.cancel();
+    _userChatsSub?.cancel();
     _audioPlayer.dispose(); // ✅ Cleanup
     super.dispose();
   }
@@ -287,7 +315,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
   void _playSound() async {
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.release);
-      await _audioPlayer.stop(); // restart cleanly if a previous alert is still playing
+      await _audioPlayer
+          .stop(); // restart cleanly if a previous alert is still playing
       await _audioPlayer.play(AssetSource('notify.mp3'));
     } catch (e) {
       debugPrint("❌ Error playing sound: $e");
@@ -381,12 +410,16 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
   void _endActiveSession(ActiveSession session) {
     if (session.sessionType == "Chat") {
       final controller = SessionsController();
-      controller.finishChatSession(session.userId, session.companyId, session.fullName);
+      controller.finishChatSession(
+          session.userId, session.companyId, session.fullName);
       SessionsController.activeSessionNotifier.value = null;
     } else {
       final controller = SessionsController();
       controller.updateStatus(context, session.userId, "Talk", "finished");
-      FirebaseFirestore.instance.collection("sessions").doc(session.userId).update({
+      FirebaseFirestore.instance
+          .collection("sessions")
+          .doc(session.userId)
+          .update({
         "status": "finished",
         "endTime": FieldValue.serverTimestamp(),
       });
@@ -436,8 +469,12 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     return GestureDetector(
       onPanUpdate: (details) {
         setState(() {
-          double x = _position.dx == -1 ? MediaQuery.of(context).size.width - 100 : _position.dx;
-          double y = _position.dy == -1 ? MediaQuery.of(context).size.height - 100 : _position.dy;
+          double x = _position.dx == -1
+              ? MediaQuery.of(context).size.width - 100
+              : _position.dx;
+          double y = _position.dy == -1
+              ? MediaQuery.of(context).size.height - 100
+              : _position.dy;
           _position = Offset(x + details.delta.dx, y + details.delta.dy);
         });
       },
@@ -449,7 +486,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
       child: Material(
         elevation: 10,
         shape: const CircleBorder(),
-        color: session.sessionType == "Chat" ? Colors.blueAccent : Colors.green.shade600,
+        color: session.sessionType == "Chat"
+            ? Colors.blueAccent
+            : Colors.green.shade600,
         child: Container(
           width: 65,
           height: 65,
@@ -501,14 +540,22 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
               GestureDetector(
                 onPanUpdate: (details) {
                   setState(() {
-                    double x = _position.dx == -1 ? MediaQuery.of(context).size.width - 430 : _position.dx;
-                    double y = _position.dy == -1 ? MediaQuery.of(context).size.height - 550 : _position.dy;
-                    _position = Offset(x + details.delta.dx, y + details.delta.dy);
+                    double x = _position.dx == -1
+                        ? MediaQuery.of(context).size.width - 430
+                        : _position.dx;
+                    double y = _position.dy == -1
+                        ? MediaQuery.of(context).size.height - 550
+                        : _position.dy;
+                    _position =
+                        Offset(x + details.delta.dx, y + details.delta.dy);
                   });
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  color: session.sessionType == "Chat" ? Colors.blueAccent : Colors.green.shade600,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  color: session.sessionType == "Chat"
+                      ? Colors.blueAccent
+                      : Colors.green.shade600,
                   child: Row(
                     children: [
                       Icon(
@@ -529,7 +576,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.remove, color: Colors.white, size: 18),
+                        icon: const Icon(Icons.remove,
+                            color: Colors.white, size: 18),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         onPressed: () {
@@ -540,7 +588,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                       ),
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                        icon: const Icon(Icons.close,
+                            color: Colors.white, size: 18),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         onPressed: () {
@@ -575,9 +624,11 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext); // Close dialog
-              SessionsController.activeSessionNotifier.value = null; // Hide overlay
+              SessionsController.activeSessionNotifier.value =
+                  null; // Hide overlay
             },
-            child: const Text("Hide Window", style: TextStyle(color: Colors.blue)),
+            child:
+                const Text("Hide Window", style: TextStyle(color: Colors.blue)),
           ),
           TextButton(
             onPressed: () async {
@@ -586,7 +637,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
               await controller.putOnHold(session.userId, session.sessionType);
               SessionsController.activeSessionNotifier.value = null;
             },
-            child: const Text("Put On Hold", style: TextStyle(color: Colors.orange)),
+            child: const Text("Put On Hold",
+                style: TextStyle(color: Colors.orange)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -615,13 +667,15 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                 .orderBy("timestamp", descending: false)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              if (!snapshot.hasData)
+                return const Center(child: CircularProgressIndicator());
               final messages = snapshot.data!.docs;
 
               // Auto-scroll to bottom
               Future.delayed(const Duration(milliseconds: 200), () {
                 if (chatScrollController.hasClients) {
-                  chatScrollController.jumpTo(chatScrollController.position.maxScrollExtent);
+                  chatScrollController
+                      .jumpTo(chatScrollController.position.maxScrollExtent);
                 }
               });
 
@@ -629,32 +683,39 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                 controller: chatScrollController,
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
-                  final messageData = messages[index].data() as Map<String, dynamic>;
-                  final isAdmin = messageData["senderId"] == FirebaseAuth.instance.currentUser?.uid;
+                  final messageData =
+                      messages[index].data() as Map<String, dynamic>;
+                  final isAdmin = messageData["senderId"] ==
+                      FirebaseAuth.instance.currentUser?.uid;
                   final isSystem = messageData["senderId"] == "system";
 
                   return Align(
                     alignment: isSystem
                         ? Alignment.center
                         : isAdmin
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                     child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 4, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 12),
                       decoration: BoxDecoration(
                         color: isAdmin
                             ? Colors.blueAccent
                             : isSystem
-                            ? Colors.grey.shade400
-                            : Colors.grey.shade300,
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         messageData["message"] ?? "",
                         style: TextStyle(
-                          color: isAdmin || isSystem ? Colors.white : Colors.black87,
-                          fontStyle: isSystem ? FontStyle.italic : FontStyle.normal,
+                          color: isAdmin || isSystem
+                              ? Colors.white
+                              : Colors.black87,
+                          fontStyle:
+                              isSystem ? FontStyle.italic : FontStyle.normal,
                           fontSize: 13,
                         ),
                       ),
@@ -686,7 +747,10 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                 width: double.infinity,
                 child: const Text(
                   "This session has ended.",
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                  style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
               );
@@ -694,14 +758,18 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
 
             if (isOnHold) {
               return Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 color: Colors.amber.shade100,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       "Session is on hold",
-                      style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold, fontSize: 12),
+                      style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12),
                     ),
                     ElevatedButton(
                       onPressed: () async {
@@ -709,7 +777,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                             .collection("safe_talk/chat/queue")
                             .doc(session.userId)
                             .update({"status": "ongoing"});
-                        await FirebaseFirestore.instance.collection(chatRoomId).add({
+                        await FirebaseFirestore.instance
+                            .collection(chatRoomId)
+                            .add({
                           "senderId": "system",
                           "message": "▶️ Admin has resumed the chat.",
                           "timestamp": FieldValue.serverTimestamp(),
@@ -717,11 +787,13 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.amber.shade800,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text("Resume", style: TextStyle(color: Colors.white, fontSize: 11)),
+                      child: const Text("Resume",
+                          style: TextStyle(color: Colors.white, fontSize: 11)),
                     ),
                   ],
                 ),
@@ -760,7 +832,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blueAccent, size: 20),
+                    icon: const Icon(Icons.send,
+                        color: Colors.blueAccent, size: 20),
                     onPressed: () {
                       final text = chatMsgController.text.trim();
                       if (text.isEmpty) return;
@@ -805,6 +878,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           '/navigation/user-management',
           '/navigation/community',
           '/navigation/support',
+          '/navigation/user-chats',
           '/navigation/logout',
         ];
 
@@ -915,6 +989,7 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         '/navigation/community',
         '/navigation/user-tracking',
         '/navigation/support',
+        '/navigation/user-chats',
         '/navigation/notifications',
         '/navigation/dataanalytics',
       ].any(route.startsWith);
@@ -960,59 +1035,69 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
     switch (userRole) {
       case 'Super Admin':
         return [
-          _buildSidebarItem(context, Icons.home_outlined, 'Home', '/navigation/home'),
+          _buildSidebarItem(
+              context, Icons.home_outlined, 'Home', '/navigation/home'),
           _buildSidebarItem(context, Icons.people_outline, 'User Management',
               '/navigation/user-management'),
           _buildSidebarItem(context, Icons.description_outlined, 'Contents',
               '/navigation/contents'),
-          _buildSidebarItem(
-              context, Icons.chat_bubble_outline, 'Sessions', '/navigation/sessions',
+          _buildSidebarItem(context, Icons.chat_bubble_outline, 'Sessions',
+              '/navigation/sessions',
               badgeCount: chatQueueCount + talkQueueCount),
           _buildSidebarItem(context, Icons.calendar_month_outlined, 'Bookings',
               '/navigation/bookings',
               badgeCount: bookingRequestedCount),
-          _buildSidebarItem(
-              context, Icons.confirmation_number_outlined, 'Tickets', '/navigation/tickets',
+          _buildSidebarItem(context, Icons.confirmation_number_outlined,
+              'Tickets', '/navigation/tickets',
               badgeCount: openTicketsCount),
-          _buildSidebarItem(context, Icons.sensors, 'Telemetry',
-              '/navigation/user-tracking'),
+          _buildSidebarItem(
+              context, Icons.sensors, 'Telemetry', '/navigation/user-tracking'),
           _buildSidebarItem(context, Icons.group_outlined, 'Community',
               '/navigation/community',
               badgeCount: pendingPostsCount),
           _buildSidebarItem(context, Icons.bar_chart, 'Data Analytics',
               '/navigation/dataanalytics'),
-          _buildSidebarItem(context, Icons.notifications_none_outlined, 'Notifications', '/navigation/notifications'),
-          _buildSidebarItem(
-              context, Icons.support_agent_outlined, 'Support', '/navigation/support',
+          _buildSidebarItem(context, Icons.notifications_none_outlined,
+              'Notifications', '/navigation/notifications'),
+          _buildSidebarItem(context, Icons.support_agent_outlined, 'Support',
+              '/navigation/support',
               badgeCount: supportWaitingCount),
+          _buildSidebarItem(context, Icons.forum_outlined, 'User Chats',
+              '/navigation/user-chats',
+              badgeCount: userChatUnreadCount),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
       case 'Admin':
         return [
-          _buildSidebarItem(context, Icons.home_outlined, 'Home', '/navigation/home'),
+          _buildSidebarItem(
+              context, Icons.home_outlined, 'Home', '/navigation/home'),
           _buildSidebarItem(context, Icons.description_outlined, 'Contents',
               '/navigation/contents'),
-          _buildSidebarItem(
-              context, Icons.chat_bubble_outline, 'Sessions', '/navigation/sessions',
+          _buildSidebarItem(context, Icons.chat_bubble_outline, 'Sessions',
+              '/navigation/sessions',
               badgeCount: chatQueueCount + talkQueueCount),
           _buildSidebarItem(context, Icons.calendar_month_outlined, 'Bookings',
               '/navigation/bookings',
               badgeCount: bookingRequestedCount),
-          _buildSidebarItem(
-              context, Icons.confirmation_number_outlined, 'Tickets', '/navigation/tickets',
+          _buildSidebarItem(context, Icons.confirmation_number_outlined,
+              'Tickets', '/navigation/tickets',
               badgeCount: openTicketsCount),
-          _buildSidebarItem(context, Icons.sensors, 'Telemetry',
-              '/navigation/user-tracking'),
+          _buildSidebarItem(
+              context, Icons.sensors, 'Telemetry', '/navigation/user-tracking'),
           _buildSidebarItem(context, Icons.group_outlined, 'Community',
               '/navigation/community',
               badgeCount: pendingPostsCount),
           _buildSidebarItem(context, Icons.bar_chart, 'Data Analytics',
               '/navigation/dataanalytics'),
-          _buildSidebarItem(context, Icons.notifications_none_outlined, 'Notifications', '/navigation/notifications'),
-          _buildSidebarItem(
-              context, Icons.support_agent_outlined, 'Support', '/navigation/support',
+          _buildSidebarItem(context, Icons.notifications_none_outlined,
+              'Notifications', '/navigation/notifications'),
+          _buildSidebarItem(context, Icons.support_agent_outlined, 'Support',
+              '/navigation/support',
               badgeCount: supportWaitingCount),
+          _buildSidebarItem(context, Icons.forum_outlined, 'User Chats',
+              '/navigation/user-chats',
+              badgeCount: userChatUnreadCount),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
         ];
@@ -1021,8 +1106,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           _buildSidebarItem(context, Icons.calendar_month_outlined, 'Bookings',
               '/navigation/bookings',
               badgeCount: bookingRequestedCount),
-          _buildSidebarItem(
-              context, Icons.chat_bubble_outline, 'Sessions', '/navigation/sessions',
+          _buildSidebarItem(context, Icons.chat_bubble_outline, 'Sessions',
+              '/navigation/sessions',
               badgeCount: chatQueueCount + talkQueueCount),
           _buildLogoutItem(context),
           _buildVersionInfoWidget(),
@@ -1056,7 +1141,9 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? MyColors.greyDark.withOpacity(0.3) : Colors.transparent,
+          color: isSelected
+              ? MyColors.greyDark.withOpacity(0.3)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -1064,7 +1151,8 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, color: isSelected ? MyColors.color1 : Colors.grey[600]),
+                Icon(icon,
+                    color: isSelected ? MyColors.color1 : Colors.grey[600]),
                 const SizedBox(width: 15),
                 Text(
                   title,
@@ -1084,7 +1172,10 @@ class _NavigationBarMenuScreenState extends State<NavigationBarMenuScreen> {
                 ),
                 child: Text(
                   '$badgeCount',
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
           ],
