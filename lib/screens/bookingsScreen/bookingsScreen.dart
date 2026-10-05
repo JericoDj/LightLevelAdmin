@@ -52,6 +52,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
             : DateTime(2000),
         'time': data['time'] ?? '',
         'date_requested': data['date_requested'] ?? '',
+        'created_at': data['created_at'] is Timestamp
+            ? (data['created_at'] as Timestamp).toDate()
+            : null,
       };
     }).toList();
 
@@ -60,16 +63,44 @@ class _BookingsScreenState extends State<BookingsScreen> {
   }
 
   Future<List<String>> _fetchSpecialists() async {
+    final List<String> specialists = [];
+    final Set<String> seen = {};
+
+    void addName(dynamic raw) {
+      final name = raw?.toString().trim() ?? '';
+      if (name.isEmpty) return;
+      // Skip duplicates (case-insensitive), keeping the first spelling found
+      if (seen.add(name.toLowerCase())) specialists.add(name);
+    }
+
     try {
       final snapshot = await _firestore
           .collection('admins')
           .where('role', isEqualTo: 'Specialist')
           .get();
-      return snapshot.docs.map((doc) => doc['fullName'] as String).toList();
+      for (final doc in snapshot.docs) {
+        addName(doc.data()['fullName']);
+      }
     } catch (e) {
       print("❌ Error fetching specialists: $e");
-      return [];
     }
+
+    // Additional specialists listed under the SP001 company in User Management
+    try {
+      final companySnapshot = await _firestore
+          .collection('companies')
+          .doc('SP001')
+          .collection('users')
+          .get();
+      for (final doc in companySnapshot.docs) {
+        addName(doc.data()['name']);
+      }
+    } catch (e) {
+      print("❌ Error fetching SP001 specialists: $e");
+    }
+
+    specialists.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return specialists;
   }
 
   List<String> _generateTimeOptions() {
@@ -157,6 +188,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           Text('Full Name: ${booking['full_name']}'),
                           Text('Phone: ${booking['phone']}'),
                           Text('Company ID: ${booking['company_id']}'),
+                          Text('Date Created: ${_formatCreatedAt(booking['created_at'])}'),
                           const SizedBox(height: 4),
                           Text(
                             '${isFinished || booking['status'].toString().toLowerCase() == 'scheduled' ? 'Scheduled' : 'Requested'} Date: ${_formatBookingDate(booking['date_requested'])}',
@@ -605,6 +637,19 @@ class _BookingsScreenState extends State<BookingsScreen> {
     } catch (_) {
       return value; // Already human-readable (e.g. "Fri, Jan 30")
     }
+  }
+
+  String _formatCreatedAt(DateTime? date) {
+    if (date == null) return 'Not available';
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final local = date.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour < 12 ? 'AM' : 'PM';
+    return '${months[local.month - 1]} ${local.day}, ${local.year} $hour:$minute $period';
   }
 
   Widget _buildStatusTag(String status) {
